@@ -1,0 +1,17 @@
+[package]
+name = "rs-gtest-runner"
+version = "0.0.1"
+authors = ["Benjamin Bannier <bbannier@gmail.com>"]
+
+[[bin]]
+name = "gtest-runner"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2.26"
+clippy = { version = "*", optional = true }
+console = ">=0.6.1, <1.0.0"
+indicatif = "0.9"
+num_cpus = "1.8.0"
+regex = "0.2"
+itertools = "0.7"
