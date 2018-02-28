@@ -1,4 +1,4 @@
-gtest-runner
+gtest-runner [![Build Status](https://travis-ci.org/bbannier/gtest-runner.svg?branch=master)](https://travis-ci.org/bbannier/gtest-runner)
 ============
 
 A parallel test runner for [googletest](https://github.com/googletest).
