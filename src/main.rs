@@ -18,7 +18,8 @@ use regex::Regex;
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::io::{BufRead, BufReader, Read};
+use std::io;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -40,14 +41,17 @@ struct GTestResult {
     pub status: GTestStatus,
 }
 
-struct GTestParser<T: Read> {
+struct GTestParser<T: Iterator> {
     testcase: String,
     log: Vec<String>,
-    reader: BufReader<T>,
+    reader: T,
 }
 
-impl<T: Read> GTestParser<T> {
-    fn new(reader: BufReader<T>) -> GTestParser<T> {
+impl<T> GTestParser<T>
+where
+    T: Iterator<Item = io::Result<String>>,
+{
+    fn new(reader: T) -> GTestParser<T> {
         GTestParser {
             testcase: String::new(),
             log: vec![],
@@ -56,7 +60,10 @@ impl<T: Read> GTestParser<T> {
     }
 }
 
-impl<T: Read> Iterator for GTestParser<T> {
+impl<T> Iterator for GTestParser<T>
+where
+    T: Iterator<Item = io::Result<String>>,
+{
     type Item = GTestResult;
 
     fn next(&mut self) -> Option<GTestResult> {
@@ -64,11 +71,8 @@ impl<T: Read> Iterator for GTestParser<T> {
         let ok = Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
         let failed = Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
 
-        let mut line = String::new();
-        if let Ok(size) = self.reader.read_line(&mut line) {
-            if size == 0 {
-                return None;
-            }
+        if let Some(line) = self.reader.next() {
+            let line = line.unwrap();
 
             let status = {
                 let line = strip_ansi_codes(&line);
@@ -184,7 +188,7 @@ fn run(test_executable: &Path, jobs: usize) {
         let thread_tx = tx.clone();
 
         let _ = thread::spawn(move || {
-            for t in GTestParser::new(reader) {
+            for t in GTestParser::new(reader.lines()) {
                 progress_shard.inc(1);
 
                 match t.status {
@@ -237,7 +241,7 @@ fn run(test_executable: &Path, jobs: usize) {
         );
         println!(
             "{}",
-            failures.iter().map(|f| f.log.iter().join("")).join("")
+            failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
         );
     }
 }
