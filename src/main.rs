@@ -18,7 +18,6 @@ use regex::Regex;
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::io;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -27,6 +26,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+#[derive(Debug, PartialEq)]
 enum GTestStatus {
     STARTING,
     RUNNING,
@@ -35,6 +35,7 @@ enum GTestStatus {
 }
 use GTestStatus::*;
 
+#[derive(Debug)]
 struct GTestResult {
     pub testcase: String,
     pub log: Vec<String>,
@@ -49,7 +50,7 @@ struct GTestParser<T: Iterator> {
 
 impl<T> GTestParser<T>
 where
-    T: Iterator<Item = io::Result<String>>,
+    T: Iterator<Item = String>,
 {
     fn new(reader: T) -> GTestParser<T> {
         GTestParser {
@@ -62,7 +63,7 @@ where
 
 impl<T> Iterator for GTestParser<T>
 where
-    T: Iterator<Item = io::Result<String>>,
+    T: Iterator<Item = String>,
 {
     type Item = GTestResult;
 
@@ -72,8 +73,6 @@ where
         let failed = Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
 
         if let Some(line) = self.reader.next() {
-            let line = line.unwrap();
-
             let status = {
                 let line = strip_ansi_codes(&line);
 
@@ -103,6 +102,10 @@ where
                 }
             };
 
+            if self.testcase.is_empty() {
+                return self.next();
+            }
+
             return Some(GTestResult {
                 testcase: self.testcase.clone(),
                 log: self.log.clone(),
@@ -112,6 +115,66 @@ where
 
         None
     }
+}
+
+#[test]
+fn test_parse_one() {
+    let output = "Note: Google Test filter = *NOPE*-
+[==========] Running 3 tests from 1 test case.
+[----------] Global test environment set-up.
+[----------] 3 tests from NOPE
+[ RUN      ] NOPE.NOPE1
+[       OK ] NOPE.NOPE1 (1 ms)
+[ RUN      ] NOPE.NOPE2
+../3rdparty/libprocess/src/tests/future_tests.cpp:886: Failure
+Value of: false
+  Actual: false
+Expected: true
+[  FAILED  ] NOPE.NOPE2 (0 ms)
+[ RUN      ] NOPE.NOPE3
+../3rdparty/libprocess/src/tests/future_tests.cpp:892: Failure
+Value of: false
+  Actual: false
+Expected: true
+[  FAILED  ] NOPE.NOPE3 (0 ms)
+[----------] 3 tests from NOPE (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 3 tests from 1 test case ran. (1 ms total)
+[  PASSED  ] 1 test.
+[  FAILED  ] 2 tests, listed below:
+[  FAILED  ] NOPE.NOPE2
+[  FAILED  ] NOPE.NOPE3
+
+ 2 FAILED TESTS";
+
+    assert_eq!(
+        vec!["NOPE.NOPE1"],
+        Vec::from_iter(
+            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+                .filter(|result| result.status == OK)
+                .map(|result| result.testcase),
+        )
+    );
+
+    assert_eq!(
+        vec!["NOPE.NOPE2", "NOPE.NOPE3"],
+        Vec::from_iter(
+            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+                .filter(|result| result.status == FAILED)
+                .map(|result| result.testcase),
+        )
+    );
+
+    assert_eq!(
+        vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
+        Vec::from_iter(
+            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+                .filter(|result| result.status == STARTING)
+                .map(|result| result.testcase)
+                .dedup(),
+        )
+    );
 }
 
 fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
@@ -188,7 +251,11 @@ fn run(test_executable: &Path, jobs: usize) {
         let thread_tx = tx.clone();
 
         let _ = thread::spawn(move || {
-            for t in GTestParser::new(reader.lines()) {
+            let lines = reader.lines().map(|line| match line {
+                Ok(line) => line,
+                Err(err) => panic!(err),
+            });
+            for t in GTestParser::new(lines) {
                 progress_shard.inc(1);
 
                 match t.status {
