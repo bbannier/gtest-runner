@@ -26,16 +26,24 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum GTestStatus {
     STARTING,
     RUNNING,
     OK,
     FAILED,
+    ABORTED,
 }
 use GTestStatus::*;
 
-#[derive(Debug)]
+fn is_terminal(status: GTestStatus) -> bool {
+    match status {
+        STARTING | RUNNING => false,
+        ABORTED | OK | FAILED => true,
+    }
+}
+
+#[derive(Debug, Clone)]
 struct GTestResult {
     pub testcase: String,
     pub log: Vec<String>,
@@ -43,7 +51,7 @@ struct GTestResult {
 }
 
 struct GTestParser<T: Iterator> {
-    testcase: String,
+    testcase: Option<String>,
     log: Vec<String>,
     reader: T,
 }
@@ -54,7 +62,7 @@ where
 {
     fn new(reader: T) -> GTestParser<T> {
         GTestParser {
-            testcase: String::new(),
+            testcase: None,
             log: vec![],
             reader,
         }
@@ -89,12 +97,12 @@ where
 
             match status {
                 STARTING => {
-                    self.testcase = String::from(
+                    self.testcase = Some(String::from(
                         strip_ansi_codes(&line).to_string()[12..]
                             .split_whitespace()
                             .next()
                             .unwrap(),
-                    );
+                    ));
                     self.log = vec![line];
                 }
                 _ => {
@@ -102,15 +110,38 @@ where
                 }
             };
 
-            if self.testcase.is_empty() {
+            // Do not report until we have found a test case.
+            if self.testcase.is_none() {
                 return self.next();
             }
 
-            return Some(GTestResult {
-                testcase: self.testcase.clone(),
+            let result = GTestResult {
+                testcase: self.testcase.clone().unwrap(),
                 log: self.log.clone(),
-                status,
-            });
+                status: status.clone(),
+            };
+
+            // Unset the current test case for terminal transitions.
+            // This allows us to detect aborts.
+            match status {
+                OK | FAILED => self.testcase = None,
+                _ => {}
+            };
+
+            return Some(result);
+        }
+
+        // If we still have a non-terminal test case at this point we aborted.
+        if self.testcase.is_some() {
+            let result = GTestResult {
+                testcase: self.testcase.clone().unwrap(),
+                log: self.log.clone(),
+                status: ABORTED,
+            };
+
+            self.testcase = None;
+
+            return Some(result);
         }
 
         None
@@ -119,12 +150,12 @@ where
 
 #[test]
 fn test_parse_one() {
-    let output = "Note: Google Test filter = *NOPE*-
+    let output = r#"Note: Google Test filter = *NOPE*-
 [==========] Running 3 tests from 1 test case.
 [----------] Global test environment set-up.
 [----------] 3 tests from NOPE
 [ RUN      ] NOPE.NOPE1
-[       OK ] NOPE.NOPE1 (1 ms)
+[       OK ] NOPE.NOPE1 (0 ms)
 [ RUN      ] NOPE.NOPE2
 ../3rdparty/libprocess/src/tests/future_tests.cpp:886: Failure
 Value of: false
@@ -132,21 +163,42 @@ Value of: false
 Expected: true
 [  FAILED  ] NOPE.NOPE2 (0 ms)
 [ RUN      ] NOPE.NOPE3
-../3rdparty/libprocess/src/tests/future_tests.cpp:892: Failure
-Value of: false
-  Actual: false
-Expected: true
-[  FAILED  ] NOPE.NOPE3 (0 ms)
-[----------] 3 tests from NOPE (1 ms total)
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+F0303 10:01:07.804791 2590810944 future_tests.cpp:892] Check failed: false
+*** Check failure stack trace: ***
+*** Aborted at 1520067667 (unix time) try "date -d @1520067667" if you are using GNU date ***
+PC: @     0x7fff617c3e3e __pthread_kill
+*** SIGABRT (@0x7fff617c3e3e) received by PID 8086 (TID 0x7fff9a6ca340) stack trace: ***
+    @     0x7fff618f5f5a _sigtramp
+    @     0x7ffee1d4c228 (unknown)
+    @     0x7fff61720312 abort
+    @        0x10ebe76b9 google::logging_fail()
+    @        0x10ebe76aa google::LogMessage::Fail()
+    @        0x10ebe67ba google::LogMessage::SendToLog()
+    @        0x10ebe6dec google::LogMessage::Flush()
+    @        0x10ebeafdf google::LogMessageFatal::~LogMessageFatal()
+    @        0x10ebe7a49 google::LogMessageFatal::~LogMessageFatal()
+    @        0x10df7db11 NOPE_NOPE3_Test::TestBody()
+    @        0x10e217b24 testing::internal::HandleExceptionsInMethodIfSupported<>()
+    @        0x10e217a6d testing::Test::Run()
+    @        0x10e218ea0 testing::TestInfo::Run()
+    @        0x10e219827 testing::TestCase::Run()
+    @        0x10e223197 testing::internal::UnitTestImpl::RunAllTests()
+    @        0x10e222ab4 testing::internal::HandleExceptionsInMethodIfSupported<>()
+    @        0x10e222a10 testing::UnitTest::Run()
+    @        0x10deb7551 main
+    @     0x7fff61674115 start
+    @                0x2 (unknown)"#;
 
-[----------] Global test environment tear-down
-[==========] 3 tests from 1 test case ran. (1 ms total)
-[  PASSED  ] 1 test.
-[  FAILED  ] 2 tests, listed below:
-[  FAILED  ] NOPE.NOPE2
-[  FAILED  ] NOPE.NOPE3
-
- 2 FAILED TESTS";
+    assert_eq!(
+        vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
+        Vec::from_iter(
+            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+                .filter(|result| result.status == STARTING)
+                .map(|result| result.testcase)
+                .dedup(),
+        )
+    );
 
     assert_eq!(
         vec!["NOPE.NOPE1"],
@@ -158,7 +210,7 @@ Expected: true
     );
 
     assert_eq!(
-        vec!["NOPE.NOPE2", "NOPE.NOPE3"],
+        vec!["NOPE.NOPE2"],
         Vec::from_iter(
             GTestParser::new(output.split('\n').map(|line| String::from(line)))
                 .filter(|result| result.status == FAILED)
@@ -166,14 +218,47 @@ Expected: true
         )
     );
 
+    let aborted = Vec::from_iter(
+        GTestParser::new(output.split('\n').map(|line| String::from(line)))
+            .filter(|result| result.status == ABORTED),
+    );
+    assert_eq!(1, aborted.len());
     assert_eq!(
-        vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
-        Vec::from_iter(
-            GTestParser::new(output.split('\n').map(|line| String::from(line)))
-                .filter(|result| result.status == STARTING)
-                .map(|result| result.testcase)
-                .dedup(),
-        )
+        vec!["NOPE.NOPE3"],
+        aborted
+            .iter()
+            .map(|result| &result.testcase)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        r#"[ RUN      ] NOPE.NOPE3
+WARNING: Logging before InitGoogleLogging() is written to STDERR
+F0303 10:01:07.804791 2590810944 future_tests.cpp:892] Check failed: false
+*** Check failure stack trace: ***
+*** Aborted at 1520067667 (unix time) try "date -d @1520067667" if you are using GNU date ***
+PC: @     0x7fff617c3e3e __pthread_kill
+*** SIGABRT (@0x7fff617c3e3e) received by PID 8086 (TID 0x7fff9a6ca340) stack trace: ***
+    @     0x7fff618f5f5a _sigtramp
+    @     0x7ffee1d4c228 (unknown)
+    @     0x7fff61720312 abort
+    @        0x10ebe76b9 google::logging_fail()
+    @        0x10ebe76aa google::LogMessage::Fail()
+    @        0x10ebe67ba google::LogMessage::SendToLog()
+    @        0x10ebe6dec google::LogMessage::Flush()
+    @        0x10ebeafdf google::LogMessageFatal::~LogMessageFatal()
+    @        0x10ebe7a49 google::LogMessageFatal::~LogMessageFatal()
+    @        0x10df7db11 NOPE_NOPE3_Test::TestBody()
+    @        0x10e217b24 testing::internal::HandleExceptionsInMethodIfSupported<>()
+    @        0x10e217a6d testing::Test::Run()
+    @        0x10e218ea0 testing::TestInfo::Run()
+    @        0x10e219827 testing::TestCase::Run()
+    @        0x10e223197 testing::internal::UnitTestImpl::RunAllTests()
+    @        0x10e222ab4 testing::internal::HandleExceptionsInMethodIfSupported<>()
+    @        0x10e222a10 testing::UnitTest::Run()
+    @        0x10deb7551 main
+    @     0x7fff61674115 start
+    @                0x2 (unknown)"#,
+        &aborted[0].log.iter().join("\n")
     );
 }
 
@@ -244,8 +329,6 @@ fn run(test_executable: &Path, jobs: usize) {
             .ok_or_else(|| "Could not capture output")
             .unwrap();
 
-        // FIXME(bbannier): collect return value.
-
         let reader = BufReader::new(output);
         let progress_global = progress_global.clone();
         let thread_tx = tx.clone();
@@ -255,23 +338,35 @@ fn run(test_executable: &Path, jobs: usize) {
                 Ok(line) => line,
                 Err(err) => panic!(err),
             });
+
+            let mut last: Option<GTestResult> = None;
+
             for t in GTestParser::new(lines) {
                 progress_shard.inc(1);
 
                 match t.status {
-                    OK => {
-                        progress_global.inc(1);
-                    }
-                    FAILED => {
-                        progress_global.inc(1);
-                        progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
-                        thread::sleep(Duration::from_millis(500)); // FIXME(bbannier): this is silly, add a global counter somewhere.
-                        thread_tx.send(t).unwrap();
-                    }
                     STARTING => {
                         progress_shard.set_message(&format!("{}", t.testcase));
                     }
-                    _ => {}
+                    OK => {
+                        progress_global.inc(1);
+                    }
+                    FAILED | ABORTED => {
+                        progress_global.inc(1);
+                        progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
+                        thread::sleep(Duration::from_millis(500));
+                        thread_tx.send(t.clone()).unwrap();
+                    }
+                    RUNNING => { /*Ignoring running updates for now.*/ }
+                }
+
+                last = Some(t);
+            }
+
+            if let Some(mut last) = last {
+                if !is_terminal(last.status) {
+                    last.status = ABORTED;
+                    thread_tx.send(last).unwrap();
                 }
             }
 
