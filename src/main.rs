@@ -123,10 +123,9 @@ where
 
             // Unset the current test case for terminal transitions.
             // This allows us to detect aborts.
-            match status {
-                OK | FAILED => self.testcase = None,
-                _ => {}
-            };
+            if is_terminal(status) {
+                self.testcase = None;
+            }
 
             return Some(result);
         }
@@ -339,8 +338,6 @@ fn run(test_executable: &Path, jobs: usize) {
                 Err(err) => panic!(err),
             });
 
-            let mut last: Option<GTestResult> = None;
-
             for t in GTestParser::new(lines) {
                 progress_shard.inc(1);
 
@@ -358,15 +355,6 @@ fn run(test_executable: &Path, jobs: usize) {
                         thread_tx.send(t.clone()).unwrap();
                     }
                     RUNNING => { /*Ignoring running updates for now.*/ }
-                }
-
-                last = Some(t);
-            }
-
-            if let Some(mut last) = last {
-                if !is_terminal(last.status) {
-                    last.status = ABORTED;
-                    thread_tx.send(last).unwrap();
                 }
             }
 
