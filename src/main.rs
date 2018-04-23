@@ -291,7 +291,7 @@ fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     Ok(tests)
 }
 
-fn run(test_executable: &Path, jobs: usize) {
+fn run(test_executable: &Path, jobs: usize) -> usize {
     let pb = ProgressBar::new(100);
     pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
     pb.set_message("Determining number of tests ...");
@@ -394,6 +394,7 @@ fn run(test_executable: &Path, jobs: usize) {
             failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
         );
     }
+    return failures.len()
 }
 
 fn main() {
@@ -425,10 +426,12 @@ fn main() {
     let test_executables = matches.values_of("test_executable").unwrap();
     let multiple_tests = test_executables.len() > 1;
 
+    let mut ret_vec = Vec::new();
     for exe in test_executables {
         if multiple_tests {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
-        run(std::path::PathBuf::from(exe).as_path(), jobs);
+        ret_vec.push(run(std::path::PathBuf::from(exe).as_path(), jobs));
     }
+    std::process::exit(*ret_vec.iter().max().unwrap() as i32);
 }
