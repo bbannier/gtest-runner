@@ -358,7 +358,7 @@ fn run(test_executable: &Path, jobs: usize) -> usize {
                 }
             }
 
-            progress_shard.finish();
+            progress_shard.finish_and_clear();
         });
     }
 
