@@ -36,7 +36,7 @@ enum GTestStatus {
 }
 use GTestStatus::*;
 
-fn is_terminal(status: GTestStatus) -> bool {
+fn is_terminal(status: &GTestStatus) -> bool {
     match status {
         STARTING | RUNNING => false,
         ABORTED | OK | FAILED => true,
@@ -123,7 +123,7 @@ where
 
             // Unset the current test case for terminal transitions.
             // This allows us to detect aborts.
-            if is_terminal(status) {
+            if is_terminal(&status) {
                 self.testcase = None;
             }
 
@@ -192,7 +192,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+            GTestParser::new(output.split('\n').map(String::from))
                 .filter(|result| result.status == STARTING)
                 .map(|result| result.testcase)
                 .dedup(),
@@ -202,7 +202,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE1"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+            GTestParser::new(output.split('\n').map(String::from))
                 .filter(|result| result.status == OK)
                 .map(|result| result.testcase),
         )
@@ -211,14 +211,14 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE2"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(|line| String::from(line)))
+            GTestParser::new(output.split('\n').map(String::from))
                 .filter(|result| result.status == FAILED)
                 .map(|result| result.testcase),
         )
     );
 
     let aborted = Vec::from_iter(
-        GTestParser::new(output.split('\n').map(|line| String::from(line)))
+        GTestParser::new(output.split('\n').map(String::from))
             .filter(|result| result.status == ABORTED),
     );
     assert_eq!(1, aborted.len());
@@ -343,7 +343,7 @@ fn run(test_executable: &Path, jobs: usize) -> usize {
 
                 match t.status {
                     STARTING => {
-                        progress_shard.set_message(&format!("{}", t.testcase));
+                        progress_shard.set_message(&t.testcase.to_string());
                     }
                     OK => {
                         progress_global.inc(1);
@@ -394,7 +394,8 @@ fn run(test_executable: &Path, jobs: usize) -> usize {
             failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
         );
     }
-    return failures.len()
+
+    failures.len()
 }
 
 fn main() {
