@@ -38,8 +38,8 @@ use GTestStatus::*;
 
 fn is_terminal(status: &GTestStatus) -> bool {
     match status {
-        STARTING | RUNNING => false,
-        ABORTED | OK | FAILED => true,
+        &STARTING | &RUNNING => false,
+        &ABORTED | &OK | &FAILED => true,
     }
 }
 
