@@ -288,6 +288,11 @@ fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     Ok(tests)
 }
 
+/// Sharded execution of a gtest executable
+///
+/// This function takes the path to a gtest executable and number
+/// of shards. It the executes the tests in a sharded way and
+/// returns the number of failures.
 pub fn run(test_executable: &Path, jobs: usize) -> usize {
     let pb = ProgressBar::new(100);
     pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
