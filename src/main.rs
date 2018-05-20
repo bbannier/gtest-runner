@@ -54,5 +54,6 @@ fn main() {
             jobs,
         ));
     }
-    std::process::exit(*ret_vec.iter().max().unwrap() as i32);
+
+    std::process::exit(ret_vec.iter().sum::<usize>() as i32);
 }
