@@ -14,13 +14,15 @@ use regex::Regex;
 
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
-use std::iter::FromIterator;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+#[cfg(test)]
+use std::iter::FromIterator;
 
 #[derive(Clone, Debug, PartialEq)]
 enum GTestStatus {
@@ -349,6 +351,7 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
                     }
                     GTestStatus::OK => {
                         progress_global.inc(1);
+                        thread_tx.send(t.clone()).unwrap();
                     }
                     GTestStatus::FAILED | GTestStatus::ABORTED => {
                         progress_global.inc(1);
@@ -373,15 +376,21 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
 
     m.join_and_clear().unwrap();
 
-    let failures = Vec::from_iter(rx.try_iter());
+    let (successes, failures): (Vec<GTestResult>, Vec<GTestResult>) =
+        rx.try_iter().partition(|r| r.status == GTestStatus::OK);
+
     if failures.is_empty() {
         println!(
             "{}",
-            style(format!("{} tests passed", tests.len()))
+            style(format!("{} tests passed", successes.len()))
                 .bold()
                 .green()
         );
     } else {
+        println!(
+            "{}",
+            failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
+        );
         println!(
             "{}",
             style(format!(
@@ -390,10 +399,6 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
                 tests.len()
             )).bold()
                 .red()
-        );
-        println!(
-            "{}",
-            failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
         );
     }
 
