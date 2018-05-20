@@ -17,12 +17,12 @@ use itertools::Itertools;
 use regex::Regex;
 
 use std::collections::HashSet;
-use std::iter::FromIterator;
 use std::io::{BufRead, BufReader};
+use std::iter::FromIterator;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -36,10 +36,12 @@ enum GTestStatus {
 }
 use GTestStatus::*;
 
-fn is_terminal(status: &GTestStatus) -> bool {
-    match status {
-        STARTING | RUNNING => false,
-        ABORTED | OK | FAILED => true,
+impl GTestStatus {
+    fn is_terminal(&self) -> bool {
+        match self {
+            STARTING | RUNNING => false,
+            ABORTED | OK | FAILED => true,
+        }
     }
 }
 
@@ -123,7 +125,7 @@ where
 
             // Unset the current test case for terminal transitions.
             // This allows us to detect aborts.
-            if is_terminal(&status) {
+            if status.is_terminal() {
                 self.testcase = None;
             }
 
