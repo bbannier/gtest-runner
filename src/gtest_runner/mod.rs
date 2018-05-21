@@ -8,10 +8,10 @@ extern crate num_cpus;
 extern crate regex;
 
 use console::{strip_ansi_codes, style};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use itertools::Itertools;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use regex::Regex;
 
+use itertools::Itertools;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -38,6 +38,13 @@ impl GTestStatus {
         match self {
             GTestStatus::STARTING | GTestStatus::RUNNING => false,
             GTestStatus::ABORTED | GTestStatus::OK | GTestStatus::FAILED => true,
+        }
+    }
+
+    fn is_failed(&self) -> bool {
+        match self {
+            GTestStatus::STARTING | GTestStatus::RUNNING | GTestStatus::OK => false,
+            GTestStatus::FAILED | GTestStatus::ABORTED => true,
         }
     }
 }
@@ -349,7 +356,7 @@ fn process_shard(
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run(test_executable: &Path, jobs: usize) -> usize {
+pub fn run(test_executable: &Path, jobs: usize, verbosity: usize) -> usize {
     // Determine the number of tests.
     let pb = ProgressBar::new(100);
     pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
@@ -360,6 +367,9 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
 
     // Run tests.
     let m = MultiProgress::new();
+    if verbosity < 1 || verbosity > 2 {
+        m.set_draw_target(ProgressDrawTarget::hidden());
+    }
 
     let progress_global = Arc::new(m.add(ProgressBar::new(tests.len() as u64)));
     progress_global.set_style(
@@ -376,7 +386,10 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
     for job in 0..jobs {
         let output = run_shard(&test_executable, job, jobs).unwrap();
 
-        let progress_shard = m.add(ProgressBar::new(100));
+        let progress_shard = match verbosity != 2 {
+            true => ProgressBar::hidden(),
+            false => m.add(ProgressBar::new(100)),
+        };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
         process_shard(
@@ -387,45 +400,80 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
         );
     }
 
-    // Run a spinlock checking whether all processes have finished.
-    //
-    // TODO(bbannier): Use e.g., a condition variable instead.
-    thread::spawn(move || {
+    // Close the sender in this thread.
+    drop(sender);
+
+    //////////////////////////////////////////
+
+    // Report successes or failures globally.
+    let reporter = thread::spawn(move || {
+        // We wait to be unparked from the outside at the right time.
+        thread::park();
+
+        let mut num_failures = 0;
+        for result in receiver.iter() {
+            if !result.status.is_terminal() {
+                continue;
+            }
+
+            if result.status.is_failed() {
+                num_failures += 1;
+            }
+
+            if (result.status.is_failed() && verbosity > 0) || verbosity > 2 {
+                for line in result.log.iter() {
+                    println!("{}", line);
+                }
+            }
+        }
+
+        num_failures
+    });
+
+    // Start the reporter immediately if we log all output.
+    if verbosity > 2 {
+        reporter.thread().unpark();
+    }
+
+    // Run a spinlock checking whether all processes have finished
+    // and finishing the global progress.
+    let _waiter = thread::spawn(move || {
         while Arc::strong_count(&progress_global) > 1 {
             thread::sleep(Duration::from_millis(10));
         }
-        progress_global.finish_with_message("All done");
+        progress_global.finish();
     });
 
+    // This implicitly joins the waiter thread.
     m.join_and_clear().unwrap();
 
-    // Report success or failures globally.
-    let (successes, failures): (Vec<GTestResult>, Vec<GTestResult>) = receiver
-        .try_iter()
-        .partition(|r| r.status == GTestStatus::OK);
+    // If we log only failures wait until all shards have finished processing.
+    if verbosity < 3 {
+        reporter.thread().unpark();
+    }
 
-    if failures.is_empty() {
-        println!(
-            "{}",
-            style(format!("{} tests passed", successes.len()))
-                .bold()
-                .green()
-        );
+    let num_failures = reporter.join().unwrap();
+
+    if num_failures == 0 {
+        if verbosity > 0 {
+            println!(
+                "{}",
+                style(format!("{} tests passed", tests.len()))
+                    .bold()
+                    .green()
+            );
+        }
     } else {
-        println!(
-            "{}",
-            failures.iter().map(|f| f.log.iter().join("\n")).join("\n")
-        );
         println!(
             "{}",
             style(format!(
                 "{} out of {} tests failed\n",
-                failures.len(),
-                tests.len()
+                num_failures,
+                tests.len(),
             )).bold()
                 .red()
         );
     }
 
-    failures.len()
+    num_failures
 }

@@ -37,9 +37,21 @@ fn main() {
                 .multiple(true)
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("verbosity")
+                .long("verbosity")
+                .short("v")
+                .default_value("2"),
+        )
         .get_matches();
 
     let jobs = matches.value_of("jobs").unwrap().parse::<usize>().unwrap();
+
+    let verbosity = matches
+        .value_of("verbosity")
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
 
     let test_executables = matches.values_of("test_executable").unwrap();
     let multiple_tests = test_executables.len() > 1;
@@ -47,11 +59,14 @@ fn main() {
     let mut ret_vec = Vec::new();
     for exe in test_executables {
         if multiple_tests {
-            println!("{}", style(format!("Running {}", exe)).bold());
+            if verbosity > 0 {
+                println!("{}", style(format!("Running {}", exe)).bold());
+            }
         }
         ret_vec.push(gtest_runner::run(
             std::path::PathBuf::from(exe).as_path(),
             jobs,
+            verbosity,
         ));
     }
 
