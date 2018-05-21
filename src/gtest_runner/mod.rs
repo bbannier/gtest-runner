@@ -15,7 +15,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{ChildStdout, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
@@ -290,12 +290,67 @@ fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     Ok(tests)
 }
 
+fn run_shard(test_executable: &Path, job_index: usize, jobs: usize) -> Result<ChildStdout, &str> {
+    Command::new(&test_executable)
+        .env("GTEST_SHARD_INDEX", job_index.to_string())
+        .env("GTEST_TOTAL_SHARDS", jobs.to_string())
+        .env("GTEST_COLOR", "YES")
+        .stderr(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Could not launch")
+        .stdout
+        .ok_or_else(|| "Could not capture output")
+}
+
+fn process_shard(
+    output: ChildStdout,
+    sender: mpsc::Sender<GTestResult>,
+    progress_shard: ProgressBar,
+    progress_global: Arc<ProgressBar>,
+) {
+    let reader = BufReader::new(output);
+
+    // The output is processed on a separate thread to not block the main
+    // thread while we wait for output.
+    thread::spawn(move || {
+        let lines = reader.lines().map(|line| match line {
+            Ok(line) => line,
+            Err(err) => panic!(err),
+        });
+
+        for t in GTestParser::new(lines) {
+            progress_shard.inc(1);
+
+            match t.status {
+                GTestStatus::STARTING => {
+                    progress_shard.set_message(&t.testcase.to_string());
+                }
+                GTestStatus::OK => {
+                    progress_global.inc(1);
+                    sender.send(t.clone()).unwrap();
+                }
+                GTestStatus::FAILED | GTestStatus::ABORTED => {
+                    progress_global.inc(1);
+                    progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
+                    thread::sleep(Duration::from_millis(500));
+                    sender.send(t.clone()).unwrap();
+                }
+                GTestStatus::RUNNING => { /*Ignoring running updates for now.*/ }
+            }
+        }
+
+        progress_shard.finish_and_clear();
+    });
+}
+
 /// Sharded execution of a gtest executable
 ///
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
 pub fn run(test_executable: &Path, jobs: usize) -> usize {
+    // Determine the number of tests.
     let pb = ProgressBar::new(100);
     pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
     pb.set_message("Determining number of tests ...");
@@ -303,6 +358,7 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
 
     pb.finish_and_clear();
 
+    // Run tests.
     let m = MultiProgress::new();
 
     let progress_global = Arc::new(m.add(ProgressBar::new(tests.len() as u64)));
@@ -312,62 +368,29 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
     );
     progress_global.set_message("Running tests ...");
 
-    let spinner_style = ProgressStyle::default_spinner().template("{spinner} {wide_msg}");
+    // Set up a communication channel between the worker processing test
+    // output threads and the main thread.
+    let (sender, receiver) = mpsc::channel::<GTestResult>();
 
-    let (tx, rx) = mpsc::channel::<GTestResult>();
-
+    // Execute the shards.
     for job in 0..jobs {
+        let output = run_shard(&test_executable, job, jobs).unwrap();
+
         let progress_shard = m.add(ProgressBar::new(100));
-        progress_shard.set_style(spinner_style.clone());
+        progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
-        let output = Command::new(&test_executable)
-            .env("GTEST_SHARD_INDEX", job.to_string())
-            .env("GTEST_TOTAL_SHARDS", jobs.to_string())
-            .env("GTEST_COLOR", "YES")
-            .stderr(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Could not launch")
-            .stdout
-            .ok_or_else(|| "Could not capture output")
-            .unwrap();
-
-        let reader = BufReader::new(output);
-        let progress_global = progress_global.clone();
-        let thread_tx = tx.clone();
-
-        let _ = thread::spawn(move || {
-            let lines = reader.lines().map(|line| match line {
-                Ok(line) => line,
-                Err(err) => panic!(err),
-            });
-
-            for t in GTestParser::new(lines) {
-                progress_shard.inc(1);
-
-                match t.status {
-                    GTestStatus::STARTING => {
-                        progress_shard.set_message(&t.testcase.to_string());
-                    }
-                    GTestStatus::OK => {
-                        progress_global.inc(1);
-                        thread_tx.send(t.clone()).unwrap();
-                    }
-                    GTestStatus::FAILED | GTestStatus::ABORTED => {
-                        progress_global.inc(1);
-                        progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
-                        thread::sleep(Duration::from_millis(500));
-                        thread_tx.send(t.clone()).unwrap();
-                    }
-                    GTestStatus::RUNNING => { /*Ignoring running updates for now.*/ }
-                }
-            }
-
-            progress_shard.finish_and_clear();
-        });
+        process_shard(
+            output,
+            sender.clone(),
+            progress_shard,
+            progress_global.clone(),
+        );
     }
 
-    let _ = thread::spawn(move || {
+    // Run a spinlock checking whether all processes have finished.
+    //
+    // TODO(bbannier): Use e.g., a condition variable instead.
+    thread::spawn(move || {
         while Arc::strong_count(&progress_global) > 1 {
             thread::sleep(Duration::from_millis(10));
         }
@@ -376,8 +399,10 @@ pub fn run(test_executable: &Path, jobs: usize) -> usize {
 
     m.join_and_clear().unwrap();
 
-    let (successes, failures): (Vec<GTestResult>, Vec<GTestResult>) =
-        rx.try_iter().partition(|r| r.status == GTestStatus::OK);
+    // Report success or failures globally.
+    let (successes, failures): (Vec<GTestResult>, Vec<GTestResult>) = receiver
+        .try_iter()
+        .partition(|r| r.status == GTestStatus::OK);
 
     if failures.is_empty() {
         println!(
