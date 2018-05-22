@@ -27,7 +27,8 @@ Usage
         -V, --version    Prints version information
 
     OPTIONS:
-        -j, --jobs <jobs>     [default: 8]
+        -j, --jobs <jobs>               [default: 8]
+        -v, --verbosity <verbosity>     [default: 2]
 
     ARGS:
         <test_executable>...
