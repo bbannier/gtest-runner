@@ -28,6 +28,7 @@ fn main() {
             Arg::with_name("jobs")
                 .long("jobs")
                 .short("j")
+                .env("GTEST_RUNNER_JOBS")
                 .takes_value(true)
                 .default_value(&default_jobs),
         )
@@ -41,6 +42,7 @@ fn main() {
             Arg::with_name("verbosity")
                 .long("verbosity")
                 .short("v")
+                .env("GTEST_RUNNER_VERBOSITY")
                 .takes_value(true)
                 .default_value("2"),
         )
