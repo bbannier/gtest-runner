@@ -27,8 +27,8 @@ Usage
         -V, --version    Prints version information
 
     OPTIONS:
-        -j, --jobs <jobs>               [default: 8]
-        -v, --verbosity <verbosity>     [default: 2]
+        -j, --jobs <jobs>               [env: GTEST_RUNNER_JOBS=]  [default: 8]
+        -v, --verbosity <verbosity>     [env: GTEST_RUNNER_VERBOSITY=]  [default: 2]
 
     ARGS:
         <test_executable>...
