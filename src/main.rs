@@ -20,7 +20,7 @@ fn main() {
 
     let default_jobs = num_cpus::get().to_string();
 
-    let matches = App::new("mesos-gtest-runner")
+    let matches = App::new("gtest-runner")
         .settings(clap_settings)
         .version(crate_version!())
         .about(crate_description!())
