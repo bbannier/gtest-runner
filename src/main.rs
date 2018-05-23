@@ -41,6 +41,7 @@ fn main() {
             Arg::with_name("verbosity")
                 .long("verbosity")
                 .short("v")
+                .takes_value(true)
                 .default_value("2"),
         )
         .get_matches();
