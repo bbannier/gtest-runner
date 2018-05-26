@@ -356,14 +356,18 @@ fn process_shard(
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run(test_executable: &Path, jobs: usize, verbosity: usize) -> usize {
-    // Determine the number of tests.
-    let pb = ProgressBar::new(100);
-    pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
-    pb.set_message("Determining number of tests ...");
-    let tests = get_tests(test_executable).unwrap();
+pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool) -> usize {
+    let mut num_tests = 0;
 
-    pb.finish_and_clear();
+    if progress {
+        // Determine the number of tests.
+        let pb = ProgressBar::new(100);
+        pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
+        pb.set_message("Determining number of tests ...");
+        num_tests = get_tests(test_executable).unwrap().len();
+
+        pb.finish_and_clear();
+    }
 
     // Run tests.
     let m = MultiProgress::new();
@@ -371,11 +375,18 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize) -> usize {
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    let progress_global = Arc::new(m.add(ProgressBar::new(tests.len() as u64)));
-    progress_global.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
-    );
+    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
+    if progress {
+        progress_global.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
+        );
+    } else {
+        progress_global.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} {msg} {bar} [{pos}/?] {elapsed_precise}"),
+        );
+    }
     progress_global.set_message("Running tests ...");
 
     // Set up a communication channel between the worker processing test
@@ -456,23 +467,19 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize) -> usize {
 
     if num_failures == 0 {
         if verbosity > 0 {
-            println!(
-                "{}",
-                style(format!("{} tests passed", tests.len()))
-                    .bold()
-                    .green()
-            );
+            let message = match progress {
+                true => format!("{} tests passed", num_tests),
+                false => format!("All tests passed"),
+            };
+
+            println!("{}", style(message).bold().green());
         }
     } else {
-        println!(
-            "{}",
-            style(format!(
-                "{} out of {} tests failed\n",
-                num_failures,
-                tests.len(),
-            )).bold()
-                .red()
-        );
+        let message = match progress {
+            true => format!("{} out of {} tests failed\n", num_failures, num_tests),
+            false => format!("{} tests failed\n", num_failures),
+        };
+        println!("{}", style(message).bold().red());
     }
 
     num_failures

@@ -46,6 +46,14 @@ fn main() {
                 .takes_value(true)
                 .default_value("2"),
         )
+        .arg(
+            Arg::with_name("progress")
+                .long("progress")
+                .short("p")
+                .env("GTEST_RUNNER_PROGRESS")
+                .takes_value(true)
+                .default_value("true"),
+        )
         .get_matches();
 
     let jobs = matches.value_of("jobs").unwrap().parse::<usize>().unwrap();
@@ -54,6 +62,12 @@ fn main() {
         .value_of("verbosity")
         .unwrap()
         .parse::<usize>()
+        .unwrap();
+
+    let progress = verbosity == 0 || matches
+        .value_of("progress")
+        .unwrap()
+        .parse::<bool>()
         .unwrap();
 
     let test_executables = matches.values_of("test_executable").unwrap();
@@ -70,6 +84,7 @@ fn main() {
             std::path::PathBuf::from(exe).as_path(),
             jobs,
             verbosity,
+            progress,
         ));
     }
 
