@@ -64,11 +64,12 @@ fn main() {
         .parse::<usize>()
         .unwrap();
 
-    let progress = verbosity == 0 || matches
-        .value_of("progress")
-        .unwrap()
-        .parse::<bool>()
-        .unwrap();
+    let progress = verbosity == 0
+        || matches
+            .value_of("progress")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
 
     let test_executables = matches.values_of("test_executable").unwrap();
     let multiple_tests = test_executables.len() > 1;
