@@ -8,7 +8,6 @@ extern crate console;
 extern crate indicatif;
 extern crate itertools;
 extern crate num_cpus;
-extern crate regex;
 
 use clap::{App, Arg};
 use console::style;
