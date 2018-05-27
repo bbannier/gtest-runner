@@ -11,7 +11,6 @@ use console::{strip_ansi_codes, style};
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use regex::Regex;
 
-use itertools::Itertools;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -23,6 +22,9 @@ use std::time::Duration;
 
 #[cfg(test)]
 use std::iter::FromIterator;
+
+#[cfg(test)]
+use itertools::Itertools;
 
 #[derive(Clone, Debug, PartialEq)]
 enum GTestStatus {
