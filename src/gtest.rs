@@ -27,7 +27,7 @@ use std::iter::FromIterator;
 use itertools::Itertools;
 
 #[derive(Clone, Debug, PartialEq)]
-enum GTestStatus {
+enum Status {
     STARTING,
     RUNNING,
     OK,
@@ -35,41 +35,41 @@ enum GTestStatus {
     ABORTED,
 }
 
-impl GTestStatus {
+impl Status {
     fn is_terminal(&self) -> bool {
         match self {
-            GTestStatus::STARTING | GTestStatus::RUNNING => false,
-            GTestStatus::ABORTED | GTestStatus::OK | GTestStatus::FAILED => true,
+            Status::STARTING | Status::RUNNING => false,
+            Status::ABORTED | Status::OK | Status::FAILED => true,
         }
     }
 
     fn is_failed(&self) -> bool {
         match self {
-            GTestStatus::STARTING | GTestStatus::RUNNING | GTestStatus::OK => false,
-            GTestStatus::FAILED | GTestStatus::ABORTED => true,
+            Status::STARTING | Status::RUNNING | Status::OK => false,
+            Status::FAILED | Status::ABORTED => true,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-struct GTestResult {
+struct TestResult {
     pub testcase: String,
     pub log: Vec<String>,
-    pub status: GTestStatus,
+    pub status: Status,
 }
 
-struct GTestParser<T: Iterator> {
+struct Parser<T: Iterator> {
     testcase: Option<String>,
     log: Vec<String>,
     reader: T,
 }
 
-impl<T> GTestParser<T>
+impl<T> Parser<T>
 where
     T: Iterator<Item = String>,
 {
-    fn new(reader: T) -> GTestParser<T> {
-        GTestParser {
+    fn new(reader: T) -> Parser<T> {
+        Parser {
             testcase: None,
             log: vec![],
             reader,
@@ -77,13 +77,13 @@ where
     }
 }
 
-impl<T> Iterator for GTestParser<T>
+impl<T> Iterator for Parser<T>
 where
     T: Iterator<Item = String>,
 {
-    type Item = GTestResult;
+    type Item = TestResult;
 
-    fn next(&mut self) -> Option<GTestResult> {
+    fn next(&mut self) -> Option<TestResult> {
         let starting = Regex::new(r"^\[ RUN      \] .*").unwrap();
         let ok = Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
         let failed = Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
@@ -93,18 +93,18 @@ where
                 let line = strip_ansi_codes(&line);
 
                 if ok.is_match(&line) {
-                    GTestStatus::OK
+                    Status::OK
                 } else if failed.is_match(&line) {
-                    GTestStatus::FAILED
+                    Status::FAILED
                 } else if starting.is_match(&line) {
-                    GTestStatus::STARTING
+                    Status::STARTING
                 } else {
-                    GTestStatus::RUNNING
+                    Status::RUNNING
                 }
             };
 
             match status {
-                GTestStatus::STARTING => {
+                Status::STARTING => {
                     self.testcase = Some(String::from(
                         strip_ansi_codes(&line).to_string()[12..]
                             .split_whitespace()
@@ -123,7 +123,7 @@ where
                 return self.next();
             }
 
-            let result = GTestResult {
+            let result = TestResult {
                 testcase: self.testcase.clone().unwrap(),
                 log: self.log.clone(),
                 status: status.clone(),
@@ -140,10 +140,10 @@ where
 
         // If we still have a non-terminal test case at this point we aborted.
         if self.testcase.is_some() {
-            let result = GTestResult {
+            let result = TestResult {
                 testcase: self.testcase.clone().unwrap(),
                 log: self.log.clone(),
-                status: GTestStatus::ABORTED,
+                status: Status::ABORTED,
             };
 
             self.testcase = None;
@@ -200,8 +200,8 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == GTestStatus::STARTING)
+            Parser::new(output.split('\n').map(String::from))
+                .filter(|result| result.status == Status::STARTING)
                 .map(|result| result.testcase)
                 .dedup(),
         )
@@ -210,8 +210,8 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE1"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == GTestStatus::OK)
+            Parser::new(output.split('\n').map(String::from))
+                .filter(|result| result.status == Status::OK)
                 .map(|result| result.testcase),
         )
     );
@@ -219,15 +219,15 @@ PC: @     0x7fff617c3e3e __pthread_kill
     assert_eq!(
         vec!["NOPE.NOPE2"],
         Vec::from_iter(
-            GTestParser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == GTestStatus::FAILED)
+            Parser::new(output.split('\n').map(String::from))
+                .filter(|result| result.status == Status::FAILED)
                 .map(|result| result.testcase),
         )
     );
 
     let aborted = Vec::from_iter(
-        GTestParser::new(output.split('\n').map(String::from))
-            .filter(|result| result.status == GTestStatus::ABORTED),
+        Parser::new(output.split('\n').map(String::from))
+            .filter(|result| result.status == Status::ABORTED),
     );
     assert_eq!(1, aborted.len());
     assert_eq!(
@@ -314,7 +314,7 @@ fn run_shard(test_executable: &Path, job_index: usize, jobs: usize) -> Result<Ch
 
 fn process_shard(
     output: ChildStdout,
-    sender: mpsc::Sender<GTestResult>,
+    sender: mpsc::Sender<TestResult>,
     progress_shard: ProgressBar,
     progress_global: Arc<ProgressBar>,
 ) {
@@ -328,24 +328,24 @@ fn process_shard(
             Err(err) => panic!(err),
         });
 
-        for t in GTestParser::new(lines) {
+        for t in Parser::new(lines) {
             progress_shard.inc(1);
 
             match t.status {
-                GTestStatus::STARTING => {
+                Status::STARTING => {
                     progress_shard.set_message(&t.testcase.to_string());
                 }
-                GTestStatus::OK => {
+                Status::OK => {
                     progress_global.inc(1);
                     sender.send(t.clone()).unwrap();
                 }
-                GTestStatus::FAILED | GTestStatus::ABORTED => {
+                Status::FAILED | Status::ABORTED => {
                     progress_global.inc(1);
                     progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
                     thread::sleep(Duration::from_millis(500));
                     sender.send(t.clone()).unwrap();
                 }
-                GTestStatus::RUNNING => { /*Ignoring running updates for now.*/ }
+                Status::RUNNING => { /*Ignoring running updates for now.*/ }
             }
         }
 
@@ -393,7 +393,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
 
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
-    let (sender, receiver) = mpsc::channel::<GTestResult>();
+    let (sender, receiver) = mpsc::channel::<TestResult>();
 
     // Execute the shards.
     for job in 0..jobs {

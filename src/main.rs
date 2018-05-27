@@ -13,7 +13,7 @@ extern crate regex;
 use clap::{App, Arg};
 use console::style;
 
-mod gtest_runner;
+mod gtest;
 
 fn main() {
     let clap_settings = &[clap::AppSettings::ColorAuto, clap::AppSettings::ColoredHelp];
@@ -81,7 +81,7 @@ fn main() {
                 println!("{}", style(format!("Running {}", exe)).bold());
             }
         }
-        ret_vec.push(gtest_runner::run(
+        ret_vec.push(gtest::run(
             std::path::PathBuf::from(exe).as_path(),
             jobs,
             verbosity,
