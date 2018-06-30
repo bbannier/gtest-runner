@@ -98,9 +98,10 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
     for job in 0..jobs {
         let output = exec::run_shard(&test_executable, job, jobs).unwrap();
 
-        let progress_shard = match verbosity != 2 {
-            true => ProgressBar::hidden(),
-            false => m.add(ProgressBar::new(100)),
+        let progress_shard = if verbosity != 2 {
+            ProgressBar::hidden()
+        } else {
+            m.add(ProgressBar::new(100))
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
@@ -168,17 +169,19 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
 
     if num_failures == 0 {
         if verbosity > 0 {
-            let message = match progress {
-                true => format!("{} tests passed", num_tests),
-                false => format!("All tests passed"),
+            let message = if progress {
+                format!("{} tests passed", num_tests)
+            } else {
+                format!("All tests passed")
             };
 
             println!("{}", style(message).bold().green());
         }
     } else {
-        let message = match progress {
-            true => format!("{} out of {} tests failed\n", num_failures, num_tests),
-            false => format!("{} tests failed\n", num_failures),
+        let message = if progress {
+            format!("{} out of {} tests failed\n", num_failures, num_tests)
+        } else {
+            format!("{} tests failed\n", num_failures)
         };
         println!("{}", style(message).bold().red());
     }

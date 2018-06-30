@@ -75,10 +75,8 @@ fn main() {
 
     let mut ret_vec = Vec::new();
     for exe in test_executables {
-        if multiple_tests {
-            if verbosity > 0 {
-                println!("{}", style(format!("Running {}", exe)).bold());
-            }
+        if multiple_tests && verbosity > 0 {
+            println!("{}", style(format!("Running {}", exe)).bold());
         }
         ret_vec.push(gtest::run(
             std::path::PathBuf::from(exe).as_path(),
