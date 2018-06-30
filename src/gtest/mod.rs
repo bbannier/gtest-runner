@@ -134,7 +134,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
             }
 
             if (result.status.is_failed() && verbosity > 0) || verbosity > 2 {
-                for line in result.log.iter() {
+                for line in &result.log {
                     println!("{}", line);
                 }
             }
@@ -172,7 +172,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
             let message = if progress {
                 format!("{} tests passed", num_tests)
             } else {
-                format!("All tests passed")
+                "All tests passed".to_string()
             };
 
             println!("{}", style(message).bold().green());
