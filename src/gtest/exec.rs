@@ -1,17 +1,17 @@
-use indicatif::{ProgressBar};
 use console::style;
-use std::io::{BufRead, BufReader};
-use std::sync::Arc;
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+use indicatif::ProgressBar;
 use std::collections::HashSet;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{ChildStdout, Command, Stdio};
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
-use super::TestResult;
-use super::Status;
 use super::parse;
+use super::Status;
+use super::TestResult;
 
 pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     let result = Command::new(test_executable)
@@ -43,7 +43,11 @@ pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     Ok(tests)
 }
 
-pub fn run_shard(test_executable: &Path, job_index: usize, jobs: usize) -> Result<ChildStdout, &str> {
+pub fn run_shard(
+    test_executable: &Path,
+    job_index: usize,
+    jobs: usize,
+) -> Result<ChildStdout, &str> {
     Command::new(&test_executable)
         .env("GTEST_SHARD_INDEX", job_index.to_string())
         .env("GTEST_TOTAL_SHARDS", jobs.to_string())

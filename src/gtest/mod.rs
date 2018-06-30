@@ -5,15 +5,16 @@ extern crate console;
 extern crate indicatif;
 
 use console::style;
-use std::time::Duration;
-use std::thread;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use std::fs::canonicalize;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::mpsc;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
-mod parse;
 mod exec;
+mod parse;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
@@ -53,6 +54,10 @@ pub struct TestResult {
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
 pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool) -> usize {
+    // We normalize the test executable path to decouple us from `Command::new` lookup semantics
+    // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exec`.
+    let test_executable = canonicalize(test_executable).unwrap();
+
     let mut num_tests = 0;
 
     if progress {
@@ -60,7 +65,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        num_tests = exec::get_tests(test_executable).unwrap().len();
+        num_tests = exec::get_tests(&test_executable).unwrap().len();
 
         pb.finish_and_clear();
     }
