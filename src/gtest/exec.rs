@@ -3,7 +3,7 @@ use indicatif::ProgressBar;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::process::{ChildStdout, Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
@@ -56,12 +56,13 @@ pub fn cmd(test_executable: &Path, job_index: usize, jobs: usize) -> Command {
 }
 
 pub fn process_shard(
-    output: ChildStdout,
+    child: Child,
     sender: mpsc::Sender<TestResult>,
     progress_shard: ProgressBar,
     progress_global: Arc<ProgressBar>,
 ) {
-    let reader = BufReader::new(output);
+    // TODO(bbannier): Process stdout as well.
+    let reader = BufReader::new(child.stdout.unwrap());
 
     // The output is processed on a separate thread to not block the main
     // thread while we wait for output.
