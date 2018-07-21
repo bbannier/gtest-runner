@@ -43,21 +43,16 @@ pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
     Ok(tests)
 }
 
-pub fn run_shard(
-    test_executable: &Path,
-    job_index: usize,
-    jobs: usize,
-) -> Result<ChildStdout, &str> {
-    Command::new(&test_executable)
-        .env("GTEST_SHARD_INDEX", job_index.to_string())
-        .env("GTEST_TOTAL_SHARDS", jobs.to_string())
-        .env("GTEST_COLOR", "YES")
-        .stderr(Stdio::null())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Could not launch")
-        .stdout
-        .ok_or_else(|| "Could not capture output")
+pub fn cmd(test_executable: &Path, job_index: usize, jobs: usize) -> Command {
+    let mut child = Command::new(&test_executable);
+
+    child.env("GTEST_SHARD_INDEX", job_index.to_string());
+    child.env("GTEST_TOTAL_SHARDS", jobs.to_string());
+    child.env("GTEST_COLOR", "YES");
+    child.stderr(Stdio::null());
+    child.stdout(Stdio::piped());
+
+    child
 }
 
 pub fn process_shard(

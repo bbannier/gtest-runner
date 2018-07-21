@@ -96,7 +96,12 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
 
     // Execute the shards.
     for job in 0..jobs {
-        let output = exec::run_shard(&test_executable, job, jobs).unwrap();
+        let output = exec::cmd(&test_executable, job, jobs)
+            .spawn()
+            .unwrap()
+            .stdout
+            .ok_or_else(|| "Could not capture output")
+            .unwrap();
 
         let progress_shard = if verbosity != 2 {
             ProgressBar::hidden()
