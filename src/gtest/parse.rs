@@ -1,6 +1,7 @@
+extern crate console;
+extern crate itertools;
 extern crate regex;
 
-use self::regex::Regex;
 use console::strip_ansi_codes;
 
 #[cfg(test)]
@@ -37,9 +38,9 @@ where
     type Item = TestResult;
 
     fn next(&mut self) -> Option<TestResult> {
-        let starting = Regex::new(r"^\[ RUN      \] .*").unwrap();
-        let ok = Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
-        let failed = Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
+        let starting = regex::Regex::new(r"^\[ RUN      \] .*").unwrap();
+        let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
+        let failed = regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
 
         if let Some(line) = self.reader.next() {
             let status = {
