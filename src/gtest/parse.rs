@@ -29,69 +29,65 @@ where
             reader,
         }
     }
-}
 
-impl<T> Iterator for Parser<T>
-where
-    T: Iterator<Item = String>,
-{
-    type Item = TestResult;
-
-    fn next(&mut self) -> Option<TestResult> {
+    fn parse(&mut self, line: String) -> Option<TestResult> {
         let starting = regex::Regex::new(r"^\[ RUN      \] .*").unwrap();
         let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
         let failed = regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
 
-        if let Some(line) = self.reader.next() {
-            let status = {
-                let line = strip_ansi_codes(&line);
+        let status = {
+            let line = strip_ansi_codes(&line);
 
-                if ok.is_match(&line) {
-                    Status::OK
-                } else if failed.is_match(&line) {
-                    Status::FAILED
-                } else if starting.is_match(&line) {
-                    Status::STARTING
-                } else {
-                    Status::RUNNING
-                }
-            };
+            if ok.is_match(&line) {
+                Status::OK
+            } else if failed.is_match(&line) {
+                Status::FAILED
+            } else if starting.is_match(&line) {
+                Status::STARTING
+            } else {
+                Status::RUNNING
+            }
+        };
 
-            match status {
-                Status::STARTING => {
-                    self.testcase = Some(String::from(
-                        strip_ansi_codes(&line).to_string()[12..]
-                            .split_whitespace()
-                            .next()
-                            .unwrap(),
-                    ));
-                    self.log = vec![line];
-                }
-                _ => {
-                    self.log.push(line);
-                }
-            };
+        match status {
+            Status::STARTING => {
+                self.testcase = Some(String::from(
+                    strip_ansi_codes(&line).to_string()[12..]
+                        .split_whitespace()
+                        .next()
+                        .unwrap(),
+                ));
+                self.log = vec![line];
+            }
+            _ => {
+                self.log.push(line);
+            }
+        };
 
+        match self.testcase {
             // Do not report until we have found a test case.
-            if self.testcase.is_none() {
-                return self.next();
+            None => None,
+
+            // Prepare a new test result.
+            Some(_) => {
+                let result = TestResult {
+                    testcase: self.testcase.clone().unwrap(),
+                    log: self.log.clone(),
+                    status: status.clone(),
+                };
+
+                // Unset the current test case for terminal transitions.
+                // This allows us to detect aborts.
+                if status.is_terminal() {
+                    self.testcase = None;
+                }
+
+                return Some(result);
             }
-
-            let result = TestResult {
-                testcase: self.testcase.clone().unwrap(),
-                log: self.log.clone(),
-                status: status.clone(),
-            };
-
-            // Unset the current test case for terminal transitions.
-            // This allows us to detect aborts.
-            if status.is_terminal() {
-                self.testcase = None;
-            }
-
-            return Some(result);
         }
+    }
 
+    fn finalize(&mut self) -> Option<TestResult> {
         // If we still have a non-terminal test case at this point we aborted.
         if self.testcase.is_some() {
             let result = TestResult {
@@ -106,6 +102,24 @@ where
         }
 
         None
+    }
+}
+
+impl<T> Iterator for Parser<T>
+where
+    T: Iterator<Item = String>,
+{
+    type Item = TestResult;
+
+    fn next(&mut self) -> Option<TestResult> {
+        if let Some(line) = self.reader.next() {
+            return match self.parse(line) {
+                Some(result) => Some(result),
+                None => self.next(),
+            };
+        }
+
+        self.finalize()
     }
 }
 
