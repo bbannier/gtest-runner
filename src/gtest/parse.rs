@@ -12,24 +12,13 @@ use itertools::Itertools;
 
 use gtest::{Status, TestResult};
 
-pub struct Parser<T: Iterator> {
+pub struct Parser<T> {
     testcase: Option<String>,
     log: Vec<String>,
     reader: T,
 }
 
-impl<T> Parser<T>
-where
-    T: Iterator<Item = String>,
-{
-    pub fn new(reader: T) -> Parser<T> {
-        Parser {
-            testcase: None,
-            log: vec![],
-            reader,
-        }
-    }
-
+impl<T> Parser<T> {
     fn parse(&mut self, line: String) -> Option<TestResult> {
         let starting = regex::Regex::new(r"^\[ RUN      \] .*").unwrap();
         let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
@@ -102,6 +91,19 @@ where
         }
 
         None
+    }
+}
+
+impl<T> Parser<T>
+where
+    T: Iterator<Item = String>,
+{
+    pub fn new(reader: T) -> Parser<T> {
+        Parser {
+            testcase: None,
+            log: vec![],
+            reader,
+        }
     }
 }
 
