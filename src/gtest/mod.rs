@@ -90,6 +90,9 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
     }
     progress_global.set_message("Running tests ...");
 
+    // Make sure the elapsed time is updated even if no updates arrive from shards.
+    progress_global.enable_steady_tick(100 /*ms*/);
+
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
     let (sender, receiver) = mpsc::channel::<TestResult>();
