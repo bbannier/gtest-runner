@@ -71,7 +71,7 @@ impl<T> Parser<T> {
                     self.testcase = None;
                 }
 
-                return Some(result);
+                Some(result)
             }
         }
     }
