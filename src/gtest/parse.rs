@@ -19,10 +19,10 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: String) -> Option<TestResult> {
-        let starting = regex::Regex::new(r"^\[ RUN      \] .*").unwrap();
-        let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap();
-        let failed = regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap();
+    fn parse(&mut self, line: String) -> Result<Option<TestResult>, String> {
+        let starting = regex::Regex::new(r"^\[ RUN      \] .*").map_err(|e| e.to_string())?;
+        let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
+        let failed = regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
 
         let status = {
             let line = strip_ansi_codes(&line);
@@ -43,8 +43,7 @@ impl<T> Parser<T> {
                 self.testcase = Some(String::from(
                     strip_ansi_codes(&line).to_string()[12..]
                         .split_whitespace()
-                        .next()
-                        .unwrap(),
+                        .next().ok_or(format!("Expected at least a single space in line: {}", &line))?
                 ));
                 self.log = vec![line];
             }
@@ -55,12 +54,12 @@ impl<T> Parser<T> {
 
         match self.testcase {
             // Do not report until we have found a test case.
-            None => None,
+            None => Ok(None),
 
             // Prepare a new test result.
             Some(_) => {
                 let result = TestResult {
-                    testcase: self.testcase.clone().unwrap(),
+                    testcase: self.testcase.clone().ok_or("Expected a testcase to be set")?,
                     log: self.log.clone(),
                     status: status.clone(),
                 };
@@ -71,7 +70,7 @@ impl<T> Parser<T> {
                     self.testcase = None;
                 }
 
-                Some(result)
+                Ok(Some(result))
             }
         }
     }
@@ -115,7 +114,7 @@ where
 
     fn next(&mut self) -> Option<TestResult> {
         if let Some(line) = self.reader.next() {
-            return match self.parse(line) {
+            return match self.parse(line).ok()? {
                 Some(result) => Some(result),
                 None => self.next(),
             };

@@ -16,14 +16,14 @@ use super::parse;
 use super::Status;
 use super::TestResult;
 
-pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
+pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, String> {
     let result = Command::new(test_executable)
         .args(&["--gtest_list_tests"])
         .output()
         .expect("Failed to execute process");
 
     if !result.status.success() {
-        return Err("Failed to run program");
+        return Err("Failed to run program".to_owned());
     }
 
     let output = String::from_utf8_lossy(&result.stdout);
@@ -35,7 +35,7 @@ pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, &str> {
         if !line.starts_with(' ') {
             current_test = line.split_whitespace().next();
         } else {
-            let case = &line.split_whitespace().next().unwrap();
+            let case = &line.split_whitespace().next().ok_or(format!("Expected test case on line: {}", &line))?;
             tests.insert(match current_test {
                 Some(t) => [t, case].concat(),
                 None => panic!("Couldn't determine test name"),
@@ -63,9 +63,9 @@ pub fn process_shard(
     sender: mpsc::Sender<TestResult>,
     progress_shard: ProgressBar,
     progress_global: Arc<ProgressBar>,
-) {
+) -> Result<(), &'static str> {
     // TODO(bbannier): Process stdout as well.
-    let reader = BufReader::new(child.stdout.unwrap());
+    let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
 
     // The output is processed on a separate thread to not block the main
     // thread while we wait for output.
@@ -98,4 +98,6 @@ pub fn process_shard(
 
         progress_shard.finish_and_clear();
     });
+
+    Ok(())
 }
