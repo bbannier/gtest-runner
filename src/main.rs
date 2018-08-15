@@ -14,7 +14,7 @@ use console::style;
 
 mod gtest;
 
-fn main() {
+fn main() -> Result<(), String> {
     let clap_settings = &[clap::AppSettings::ColorAuto, clap::AppSettings::ColoredHelp];
 
     let default_jobs = num_cpus::get().to_string();
@@ -30,47 +30,48 @@ fn main() {
                 .env("GTEST_RUNNER_JOBS")
                 .takes_value(true)
                 .default_value(&default_jobs),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("test_executable")
                 .required(true)
                 .multiple(true)
                 .takes_value(false),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("verbosity")
                 .long("verbosity")
                 .short("v")
                 .env("GTEST_RUNNER_VERBOSITY")
                 .takes_value(true)
                 .default_value("2"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("progress")
                 .long("progress")
                 .short("p")
                 .env("GTEST_RUNNER_PROGRESS")
                 .takes_value(true)
                 .default_value("true"),
-        )
-        .get_matches();
+        ).get_matches();
 
-    let jobs = matches.value_of("jobs").unwrap().parse::<usize>().unwrap();
+    let jobs = matches
+        .value_of("jobs")
+        .ok_or("Expected the 'jobs' parameter to be set")?
+        .parse::<usize>()
+        .map_err(|e| e.to_string())?;
 
     let verbosity = matches
         .value_of("verbosity")
-        .unwrap()
+        .ok_or("Expected the 'verbosity' parameter to be set")?
         .parse::<usize>()
-        .unwrap();
+        .map_err(|e| e.to_string())?;
 
-    let progress = verbosity == 0
-        || matches
-            .value_of("progress")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
+    let progress = verbosity == 0 || matches
+        .value_of("progress")
+        .ok_or("Expected the 'progress' parameter to be set")?
+        .parse::<bool>()
+        .map_err(|e| e.to_string())?;
 
-    let test_executables = matches.values_of("test_executable").unwrap();
+    let test_executables = matches
+        .values_of("test_executable")
+        .ok_or("Expected the 'test_executable' parameter to be set")?;
     let multiple_tests = test_executables.len() > 1;
 
     let mut ret_vec = Vec::new();
@@ -83,7 +84,7 @@ fn main() {
             jobs,
             verbosity,
             progress,
-        ));
+        )?);
     }
 
     std::process::exit(ret_vec.iter().sum::<usize>() as i32);

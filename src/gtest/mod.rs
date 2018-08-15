@@ -53,10 +53,15 @@ pub struct TestResult {
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool) -> usize {
+pub fn run(
+    test_executable: &Path,
+    jobs: usize,
+    verbosity: usize,
+    progress: bool,
+) -> Result<usize, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exec`.
-    let test_executable = canonicalize(test_executable).unwrap();
+    let test_executable = canonicalize(test_executable).map_err(|e| e.to_string())?;
 
     let mut num_tests = 0;
 
@@ -65,7 +70,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        num_tests = exec::get_tests(&test_executable).unwrap().len();
+        num_tests = exec::get_tests(&test_executable)?.len();
 
         pb.finish_and_clear();
     }
@@ -99,7 +104,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
 
     // Execute the shards.
     for job in 0..jobs {
-        let output = exec::cmd(&test_executable, job, jobs).spawn().unwrap();
+        let output = exec::cmd(&test_executable, job, jobs).spawn().map_err(|e| e.to_string())?;
 
         let progress_shard = if verbosity != 2 {
             ProgressBar::hidden()
@@ -113,7 +118,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
             sender.clone(),
             progress_shard,
             progress_global.clone(),
-        );
+        )?;
     }
 
     // Close the sender in this thread.
@@ -161,7 +166,7 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
     });
 
     // This implicitly joins the waiter thread.
-    m.join_and_clear().unwrap();
+    m.join_and_clear().map_err(|e| e.to_string())?;
 
     // If we log only failures wait until all shards have finished processing.
     if verbosity < 3 {
@@ -189,5 +194,5 @@ pub fn run(test_executable: &Path, jobs: usize, verbosity: usize, progress: bool
         println!("{}", style(message).bold().red());
     }
 
-    num_failures
+    Ok(num_failures)
 }
