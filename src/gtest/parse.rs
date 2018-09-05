@@ -22,7 +22,8 @@ impl<T> Parser<T> {
     fn parse(&mut self, line: String) -> Result<Option<TestResult>, String> {
         let starting = regex::Regex::new(r"^\[ RUN      \] .*").map_err(|e| e.to_string())?;
         let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
-        let failed = regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
+        let failed =
+            regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
 
         let status = {
             let line = strip_ansi_codes(&line);
@@ -43,7 +44,10 @@ impl<T> Parser<T> {
                 self.testcase = Some(String::from(
                     strip_ansi_codes(&line).to_string()[12..]
                         .split_whitespace()
-                        .next().ok_or(format!("Expected at least a single space in line: {}", &line))?
+                        .next()
+                        .ok_or_else(|| {
+                            format!("Expected at least a single space in line: {}", &line)
+                        })?,
                 ));
                 self.log = vec![line];
             }
@@ -59,7 +63,10 @@ impl<T> Parser<T> {
             // Prepare a new test result.
             Some(_) => {
                 let result = TestResult {
-                    testcase: self.testcase.clone().ok_or("Expected a testcase to be set")?,
+                    testcase: self
+                        .testcase
+                        .clone()
+                        .ok_or("Expected a testcase to be set")?,
                     log: self.log.clone(),
                     status: status.clone(),
                 };

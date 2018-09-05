@@ -104,7 +104,9 @@ pub fn run(
 
     // Execute the shards.
     for job in 0..jobs {
-        let output = exec::cmd(&test_executable, job, jobs).spawn().map_err(|e| e.to_string())?;
+        let output = exec::cmd(&test_executable, job, jobs)
+            .spawn()
+            .map_err(|e| e.to_string())?;
 
         let progress_shard = if verbosity != 2 {
             ProgressBar::hidden()

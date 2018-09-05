@@ -35,7 +35,10 @@ pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, String> {
         if !line.starts_with(' ') {
             current_test = line.split_whitespace().next();
         } else {
-            let case = &line.split_whitespace().next().ok_or(format!("Expected test case on line: {}", &line))?;
+            let case = &line
+                .split_whitespace()
+                .next()
+                .ok_or_else(|| format!("Expected test case on line: {}", &line))?;
             tests.insert(match current_test {
                 Some(t) => [t, case].concat(),
                 None => panic!("Couldn't determine test name"),
