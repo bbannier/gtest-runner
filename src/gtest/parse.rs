@@ -2,13 +2,13 @@ extern crate console;
 extern crate itertools;
 extern crate regex;
 
-use console::strip_ansi_codes;
+use self::console::strip_ansi_codes;
 
 #[cfg(test)]
 use std::iter::FromIterator;
 
 #[cfg(test)]
-use itertools::Itertools;
+use self::itertools::Itertools;
 
 use gtest::{Status, TestResult};
 
