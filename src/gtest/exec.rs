@@ -4,20 +4,20 @@ extern crate indicatif;
 use console::style;
 use indicatif::ProgressBar;
 use std::collections::HashSet;
+use std::convert::Into;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
-use std::convert::Into;
 use std::time::Duration;
 
 use super::parse;
 use super::Status;
 use super::TestResult;
 
-pub fn get_tests<P:Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>, String> {
+pub fn get_tests<P: Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>, String> {
     let result = Command::new(test_executable.into())
         .args(&["--gtest_list_tests"])
         .output()
@@ -50,7 +50,7 @@ pub fn get_tests<P:Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>,
     Ok(tests)
 }
 
-pub fn cmd<P:Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
+pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
     let mut child = Command::new(&test_executable.into());
 
     child.env("GTEST_SHARD_INDEX", job_index.to_string());

@@ -79,12 +79,7 @@ fn main() -> Result<(), String> {
         if multiple_tests && verbosity > 0 {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
-        ret_vec.push(gtest::run(
-            exe,
-            jobs,
-            verbosity,
-            progress,
-        )?);
+        ret_vec.push(gtest::run(exe, jobs, verbosity, progress)?);
     }
 
     std::process::exit(ret_vec.iter().sum::<usize>() as i32);

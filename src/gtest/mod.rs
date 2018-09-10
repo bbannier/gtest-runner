@@ -53,7 +53,7 @@ pub struct TestResult {
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run<P:Into<PathBuf>>(
+pub fn run<P: Into<PathBuf>>(
     test_executable: P,
     jobs: usize,
     verbosity: usize,
