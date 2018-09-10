@@ -1,6 +1,6 @@
 [package]
 name = "rs-gtest-runner"
-version = "0.0.12"
+version = "0.0.13"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 
 [[bin]]
