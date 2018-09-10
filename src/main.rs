@@ -80,7 +80,7 @@ fn main() -> Result<(), String> {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
         ret_vec.push(gtest::run(
-            std::path::PathBuf::from(exe).as_path(),
+            exe,
             jobs,
             verbosity,
             progress,

@@ -5,19 +5,20 @@ use console::style;
 use indicatif::ProgressBar;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
+use std::convert::Into;
 use std::time::Duration;
 
 use super::parse;
 use super::Status;
 use super::TestResult;
 
-pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, String> {
-    let result = Command::new(test_executable)
+pub fn get_tests<P:Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>, String> {
+    let result = Command::new(test_executable.into())
         .args(&["--gtest_list_tests"])
         .output()
         .expect("Failed to execute process");
@@ -49,8 +50,8 @@ pub fn get_tests(test_executable: &Path) -> Result<HashSet<String>, String> {
     Ok(tests)
 }
 
-pub fn cmd(test_executable: &Path, job_index: usize, jobs: usize) -> Command {
-    let mut child = Command::new(&test_executable);
+pub fn cmd<P:Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
+    let mut child = Command::new(&test_executable.into());
 
     child.env("GTEST_SHARD_INDEX", job_index.to_string());
     child.env("GTEST_TOTAL_SHARDS", jobs.to_string());

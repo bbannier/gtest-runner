@@ -7,7 +7,7 @@ extern crate indicatif;
 use console::style;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use std::fs::canonicalize;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
@@ -53,15 +53,15 @@ pub struct TestResult {
 /// This function takes the path to a gtest executable and number
 /// of shards. It the executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run(
-    test_executable: &Path,
+pub fn run<P:Into<PathBuf>>(
+    test_executable: P,
     jobs: usize,
     verbosity: usize,
     progress: bool,
 ) -> Result<usize, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exec`.
-    let test_executable = canonicalize(test_executable).map_err(|e| e.to_string())?;
+    let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
 
     let mut num_tests = 0;
 
