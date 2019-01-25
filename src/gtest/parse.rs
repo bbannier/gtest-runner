@@ -2,7 +2,7 @@ extern crate console;
 extern crate itertools;
 extern crate regex;
 
-use self::console::strip_ansi_codes;
+use console::strip_ansi_codes;
 
 #[cfg(test)]
 use std::iter::FromIterator;

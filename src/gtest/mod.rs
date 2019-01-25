@@ -4,8 +4,8 @@
 extern crate console;
 extern crate indicatif;
 
-use self::console::style;
-use self::indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use console::style;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::mpsc;

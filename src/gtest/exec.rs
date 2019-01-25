@@ -1,8 +1,8 @@
 extern crate console;
 extern crate indicatif;
 
-use self::console::style;
-use self::indicatif::ProgressBar;
+use console::style;
+use indicatif::ProgressBar;
 use std::collections::HashSet;
 use std::convert::Into;
 use std::io::{BufRead, BufReader};
