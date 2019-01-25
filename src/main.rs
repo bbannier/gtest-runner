@@ -30,26 +30,30 @@ fn main() -> Result<(), String> {
                 .env("GTEST_RUNNER_JOBS")
                 .takes_value(true)
                 .default_value(&default_jobs),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("test_executable")
                 .required(true)
                 .multiple(true)
                 .takes_value(false),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("verbosity")
                 .long("verbosity")
                 .short("v")
                 .env("GTEST_RUNNER_VERBOSITY")
                 .takes_value(true)
                 .default_value("2"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("progress")
                 .long("progress")
                 .short("p")
                 .env("GTEST_RUNNER_PROGRESS")
                 .takes_value(true)
                 .default_value("true"),
-        ).get_matches();
+        )
+        .get_matches();
 
     let jobs = matches
         .value_of("jobs")
@@ -63,11 +67,12 @@ fn main() -> Result<(), String> {
         .parse::<usize>()
         .map_err(|e| e.to_string())?;
 
-    let progress = verbosity == 0 || matches
-        .value_of("progress")
-        .ok_or("Expected the 'progress' parameter to be set")?
-        .parse::<bool>()
-        .map_err(|e| e.to_string())?;
+    let progress = verbosity == 0
+        || matches
+            .value_of("progress")
+            .ok_or("Expected the 'progress' parameter to be set")?
+            .parse::<bool>()
+            .map_err(|e| e.to_string())?;
 
     let test_executables = matches
         .values_of("test_executable")
