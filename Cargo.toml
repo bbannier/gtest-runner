@@ -1,6 +1,6 @@
 [package]
 name = "rs-gtest-runner"
-version = "0.0.13"
+version = "0.0.14"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 
 [[bin]]
@@ -9,9 +9,9 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2.32.0"
-clippy = { version = "0.0.212", optional = true }
-console = "0.6.1"
-indicatif = "0.9.0"
-num_cpus = "1.8.0"
-regex = "1.0.4"
-itertools = "0.7.8"
+clippy = { version = "0.0.302", optional = true }
+console = "0.7.5"
+indicatif = "0.11.0"
+num_cpus = "1.9.0"
+regex = "1.1.0"
+itertools = "0.8.0"
