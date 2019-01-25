@@ -60,20 +60,21 @@ pub fn run<P: Into<PathBuf>>(
     progress: bool,
 ) -> Result<usize, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
-    // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exec`.
+    // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
 
-    let mut num_tests = 0;
-
-    if progress {
+    let num_tests = if progress {
         // Determine the number of tests.
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        num_tests = exec::get_tests(&test_executable)?.len();
-
+        let num = Some(exec::get_tests(&test_executable)?.len());
         pb.finish_and_clear();
-    }
+
+        num
+    } else {
+        None
+    };
 
     // Run tests.
     let m = MultiProgress::new();
@@ -81,7 +82,7 @@ pub fn run<P: Into<PathBuf>>(
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
+    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests.unwrap_or_else(|| 0) as u64)));
     if progress {
         progress_global.set_style(
             ProgressStyle::default_spinner()
@@ -179,8 +180,8 @@ pub fn run<P: Into<PathBuf>>(
 
     if num_failures == 0 {
         if verbosity > 0 {
-            let message = if progress {
-                format!("{} tests passed", num_tests)
+            let message = if num_tests.is_some() {
+                format!("{} tests passed", num_tests.unwrap())
             } else {
                 "All tests passed".to_string()
             };
@@ -188,8 +189,12 @@ pub fn run<P: Into<PathBuf>>(
             println!("{}", style(message).bold().green());
         }
     } else {
-        let message = if progress {
-            format!("{} out of {} tests failed\n", num_failures, num_tests)
+        let message = if num_tests.is_some() {
+            format!(
+                "{} out of {} tests failed\n",
+                num_failures,
+                num_tests.unwrap()
+            )
         } else {
             format!("{} tests failed\n", num_failures)
         };
