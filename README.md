@@ -16,6 +16,7 @@ If a test fails its log is shown.
 
 ![Screenshot of run with_failures](screenshot_failures.gif)
 
+
 Usage
 -----
 
@@ -28,10 +29,12 @@ Usage
 
     OPTIONS:
         -j, --jobs <jobs>               [env: GTEST_RUNNER_JOBS=]  [default: 8]
+        -p, --progress <progress>       [env: GTEST_RUNNER_PROGRESS=]  [default: true]
         -v, --verbosity <verbosity>     [env: GTEST_RUNNER_VERBOSITY=]  [default: 2]
 
     ARGS:
         <test_executable>...
+
 
 Installation
 ------------
