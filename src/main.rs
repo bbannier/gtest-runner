@@ -3,6 +3,8 @@
 
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate rs_tracing;
 
 extern crate console;
 extern crate indicatif;
@@ -53,6 +55,14 @@ fn main() -> Result<(), String> {
                 .takes_value(true)
                 .default_value("true"),
         )
+        .arg(
+            Arg::with_name("trace")
+                .long("trace")
+                .short("t")
+                .env("GTEST_RUNNER_TRACE")
+                .takes_value(false)
+                .help("Dumps chrome://tracing trace to current directory")
+        )
         .get_matches();
 
     let jobs = matches
@@ -74,18 +84,27 @@ fn main() -> Result<(), String> {
             .parse::<bool>()
             .map_err(|e| e.to_string())?;
 
+    let trace = matches.is_present("trace");
+
     let test_executables = matches
         .values_of("test_executable")
         .ok_or("Expected the 'test_executable' parameter to be set")?;
     let multiple_tests = test_executables.len() > 1;
+
+    if trace {
+        open_trace_file!(".").unwrap();
+    }
 
     let mut ret_vec = Vec::new();
     for exe in test_executables {
         if multiple_tests && verbosity > 0 {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
+        trace_scoped!(&exe);
         ret_vec.push(gtest::run(exe, jobs, verbosity, progress)?);
     }
+
+    close_trace_file!();
 
     std::process::exit(ret_vec.iter().sum::<usize>() as i32);
 }

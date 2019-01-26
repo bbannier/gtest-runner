@@ -84,13 +84,16 @@ pub fn process_shard(
 
             match t.status {
                 Status::STARTING => {
+                    trace_begin!(&t.testcase);
                     progress_shard.set_message(&t.testcase.to_string());
                 }
                 Status::OK => {
+                    trace_end!(&t.testcase);
                     progress_global.inc(1);
                     sender.send(t.clone()).unwrap();
                 }
                 Status::FAILED | Status::ABORTED => {
+                    trace_end!(&t.testcase);
                     progress_global.inc(1);
                     progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
                     thread::sleep(Duration::from_millis(500));

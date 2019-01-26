@@ -64,6 +64,7 @@ pub fn run<P: Into<PathBuf>>(
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
 
     let num_tests = if progress {
+        trace_scoped!("Determine number of tests");
         // Determine the number of tests.
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));

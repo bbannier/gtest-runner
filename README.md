@@ -21,10 +21,11 @@ Usage
 -----
 
     USAGE:
-        gtest-runner [OPTIONS] <test_executable>...
+        gtest-runner [FLAGS] [OPTIONS] <test_executable>...
 
     FLAGS:
         -h, --help       Prints help information
+        -t, --trace      Dumps chrome://tracing trace to current directory
         -V, --version    Prints version information
 
     OPTIONS:
