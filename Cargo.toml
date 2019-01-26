@@ -1,5 +1,5 @@
 [package]
-name = "rs-gtest-runner"
+name = "gtest-runner"
 version = "0.0.15"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 
