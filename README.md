@@ -1,20 +1,16 @@
 gtest-runner [![Build Status](https://travis-ci.org/bbannier/gtest-runner.svg?branch=master)](https://travis-ci.org/bbannier/gtest-runner)
 ============
 
-A parallel test runner for [googletest](https://github.com/googletest).
+`gtest-runner` simplifies running tests in
+[googletest](https://github.com/googletest) executable in parallel on a single
+machine. Parallel test execution can be much faster than single process
+execution.
 
 
-Screenshots
------------
+Demo
+----
 
-For successful runs only minimal output is shown.
-
-![Screenshot of run without failures](screenshot_success.gif)
-
-
-If a test fails its log is shown.
-
-![Screenshot of run with_failures](screenshot_failures.gif)
+[![Demo](https://asciinema.org/a/9hAXBKslEDXl55K3C3Yx22VNh.png)](https://asciinema.org/a/9hAXBKslEDXl55K3C3Yx22VNh)
 
 
 Usage
@@ -72,10 +68,24 @@ Usage
                 on system information (e.g., the ability to bind to fixed ports; the presence or absence of especially test-
                 created files in fixed file system locations, etc.).
 
+
 Installation
 ------------
 
 Installation requires a recent rust compiler.
 
     cargo install --git https://github.com/bbannier/gtest-runner
+
+
+Implementation
+--------------
+
+googletest natively supports sharded test execution, i.e., given a total number
+of shards each test can be assigned to a fixed shard. Individual shards can
+then be executed, e.g., on different machines or different processes on the
+same machine.
+
+Sharding in googletest is controlled by the `GTEST_TOTAL_SHARDS` and
+`GTEST_SHARD_INDEX` environment variable. `gtest-runner` takes care of setting
+up the execution environment, shard execution and reporting.
 
