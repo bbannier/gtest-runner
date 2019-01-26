@@ -152,7 +152,7 @@ pub fn run<P: Into<PathBuf>>(
                 num_failures += 1;
             }
 
-            if (result.status.is_failed() && verbosity > 0) || verbosity > 2 {
+            if result.status.is_failed() || verbosity > 2 {
                 for line in &result.log {
                     println!("{}", line);
                 }
