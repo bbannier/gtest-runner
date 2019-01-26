@@ -15,7 +15,4 @@ indicatif = "0.11.0"
 num_cpus = "1.9.0"
 regex = "1.1.0"
 itertools = "0.8.0"
-rs_tracing = { git = "https://github.com/bbannier/rs_tracing.git", optional = true, features = ["rs_tracing"] }
-
-[features]
-default = ["rs_tracing"]
+rs_tracing = { version = "1.0.0", features = ["rs_tracing"] }
