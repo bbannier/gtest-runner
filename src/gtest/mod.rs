@@ -57,13 +57,13 @@ pub fn run<P: Into<PathBuf>>(
     test_executable: P,
     jobs: usize,
     verbosity: usize,
-    progress: bool,
 ) -> Result<usize, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
 
-    let num_tests = if progress {
+    // If we show some sort of progress bar determine the total number of tests before running shards.
+    let num_tests = if verbosity > 0 {
         trace_scoped!("Determine number of tests");
         // Determine the number of tests.
         let pb = ProgressBar::new(100);
@@ -84,7 +84,7 @@ pub fn run<P: Into<PathBuf>>(
     }
 
     let progress_global = Arc::new(m.add(ProgressBar::new(num_tests.unwrap_or_else(|| 0) as u64)));
-    if progress {
+    if num_tests.is_some() {
         progress_global.set_style(
             ProgressStyle::default_spinner()
                 .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),

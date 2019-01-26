@@ -48,14 +48,6 @@ fn main() -> Result<(), String> {
                 .default_value("2"),
         )
         .arg(
-            Arg::with_name("progress")
-                .long("progress")
-                .short("p")
-                .env("GTEST_RUNNER_PROGRESS")
-                .takes_value(true)
-                .default_value("true"),
-        )
-        .arg(
             Arg::with_name("trace")
                 .long("trace")
                 .short("t")
@@ -77,13 +69,6 @@ fn main() -> Result<(), String> {
         .parse::<usize>()
         .map_err(|e| e.to_string())?;
 
-    let progress = verbosity == 0
-        || matches
-            .value_of("progress")
-            .ok_or("Expected the 'progress' parameter to be set")?
-            .parse::<bool>()
-            .map_err(|e| e.to_string())?;
-
     let trace = matches.is_present("trace");
 
     let test_executables = matches
@@ -101,7 +86,7 @@ fn main() -> Result<(), String> {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
         trace_scoped!(&exe);
-        ret_vec.push(gtest::run(exe, jobs, verbosity, progress)?);
+        ret_vec.push(gtest::run(exe, jobs, verbosity)?);
     }
 
     close_trace_file!();
