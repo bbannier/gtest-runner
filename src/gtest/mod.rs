@@ -6,6 +6,7 @@ extern crate indicatif;
 
 use console::style;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use std::cmp::min;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -75,6 +76,12 @@ pub fn run<P: Into<PathBuf>>(
         num
     } else {
         None
+    };
+
+    // Do not execute more jobs than tests.
+    let jobs = match num_tests {
+        Some(num_tests) => min(jobs, num_tests),
+        _ => jobs,
     };
 
     // Run tests.
