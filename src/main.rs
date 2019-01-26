@@ -31,13 +31,18 @@ fn main() -> Result<(), String> {
                 .short("j")
                 .env("GTEST_RUNNER_JOBS")
                 .takes_value(true)
-                .default_value(&default_jobs),
+                .default_value(&default_jobs)
+                .help("Number of parallel jobs")
+                .long_help("Number of parallel jobs.\n\nThis flag controls how many parallel jobs are used to execute test shards. We do not execute more jobs than there are tests (also see `progress`). Depending on the exact test workload, test execution typically becomes faster with more jobs until it reaches a plateau or even decreases when too many parallel executions compete for system resources (e.g., file system access; scheduling by the processor).\n\nThis flag can be controlled with an environment variable and by default is set to the number of processors available to the runner process"),
         )
         .arg(
             Arg::with_name("test_executable")
                 .required(true)
                 .multiple(true)
-                .takes_value(false),
+                .takes_value(false)
+                .help("GTest executable(s)")
+                .long_help("One or more GTest executables.\n\nThe test runner can execute tests from the same executable in parallel, but will currently not run different test executables in parallel. In order for tests to be executable in parallel they likely should not depend on system information (e.g., the ability to bind to fixed ports; the presence or absence of especially test-created files in fixed file system locations, etc.).",
+                ),
         )
         .arg(
             Arg::with_name("verbosity")
@@ -45,15 +50,17 @@ fn main() -> Result<(), String> {
                 .short("v")
                 .env("GTEST_RUNNER_VERBOSITY")
                 .takes_value(true)
-                .default_value("2"),
+                .default_value("2")
+                .help("Runner verbosity")
+                .long_help("Runner verbosity.\n\nThis flag controls the verbosity with which the test runner reports execution progress and results.\n\nv=0: Do not provide any output during test execution. Report failed tests at the end.\nv=1: Report global test progress. Report failed tests at the end.\nv=2: Report currently executing tests. Report failed tests at the end.\nv>2: Pass through and report all test output.\n\nThis flag can be controlled with an environment variable and has a default value"),
         )
         .arg(
             Arg::with_name("trace")
                 .long("trace")
                 .short("t")
-                .env("GTEST_RUNNER_TRACE")
                 .takes_value(false)
                 .help("Dumps chrome://tracing trace to current directory")
+                .long_help("Control tracing output.\n\nIf this flag is present a chrome://tracing execution trace (http://dev.chromium.org/developers/how-tos/trace-event-profiling-tool) will be dumped to the current directory as `<pid>.trace` which can be used to analyze e.g., temporal relations between tests or their duration. The resulting file can e.g., directly be loaded into Google Chrome under chrome://tracing, or converted to HTML with `trace2html`."),
         )
         .get_matches();
 
