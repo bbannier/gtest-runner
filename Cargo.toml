@@ -1,6 +1,11 @@
 [package]
 name = "gtest-runner"
+categories = ["command-line-utilities"]
+description = "Run gtest executables in parallel"
+homepage = "https://github.com/bbannier/gtest-runner"
+license = "MIT"
 version = "0.0.15"
+readme = "README.md"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 
 [[bin]]
@@ -9,7 +14,6 @@ path = "src/main.rs"
 
 [dependencies]
 clap = "2.32.0"
-clippy = { version = "0.0.302", optional = true }
 console = "0.7.5"
 indicatif = "0.11.0"
 num_cpus = "1.9.0"
