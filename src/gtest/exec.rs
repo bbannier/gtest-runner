@@ -1,6 +1,3 @@
-extern crate console;
-extern crate indicatif;
-
 use console::style;
 use indicatif::ProgressBar;
 use std::collections::HashSet;
