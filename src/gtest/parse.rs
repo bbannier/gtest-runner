@@ -1,14 +1,10 @@
-extern crate console;
-extern crate itertools;
-extern crate regex;
-
 use console::strip_ansi_codes;
 
 #[cfg(test)]
 use std::iter::FromIterator;
 
 #[cfg(test)]
-use self::itertools::Itertools;
+use itertools::Itertools;
 
 use gtest::{Status, TestResult};
 

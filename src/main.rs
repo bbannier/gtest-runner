@@ -6,9 +6,11 @@ extern crate clap;
 #[macro_use]
 extern crate rs_tracing;
 
+#[cfg(test)]
+extern crate itertools;
+
 extern crate console;
 extern crate indicatif;
-extern crate itertools;
 extern crate num_cpus;
 
 use clap::{App, Arg};
