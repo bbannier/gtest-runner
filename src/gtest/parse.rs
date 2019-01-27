@@ -116,14 +116,10 @@ where
     type Item = TestResult;
 
     fn next(&mut self) -> Option<TestResult> {
-        if let Some(line) = self.reader.next() {
-            return match self.parse(line).ok()? {
-                Some(result) => Some(result),
-                None => self.next(),
-            };
+        match self.reader.next() {
+            Some(line) => self.parse(line).ok()?.or_else(|| self.next()),
+            None => self.finalize(),
         }
-
-        self.finalize()
     }
 }
 
