@@ -110,7 +110,7 @@ pub fn run<P: Into<PathBuf>>(
 
     // Execute the shards.
     for job in 0..jobs {
-        let output = exec::cmd(&test_executable, job, jobs)
+        let cmd = exec::cmd(&test_executable, job, jobs)
             .spawn()
             .map_err(|e| e.to_string())?;
 
@@ -122,7 +122,7 @@ pub fn run<P: Into<PathBuf>>(
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
         exec::process_shard(
-            output,
+            cmd,
             sender.clone(),
             progress_shard,
             progress_global.clone(),
