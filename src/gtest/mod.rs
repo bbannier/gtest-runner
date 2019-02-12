@@ -4,6 +4,7 @@
 use console::style;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use std::cmp::min;
+use std::env;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -63,11 +64,19 @@ pub fn run<P: Into<PathBuf>>(
     // If we show some sort of progress bar determine the total number of tests before running shards.
     let num_tests = if verbosity > 0 {
         trace_scoped!("Determine number of tests");
-        // Determine the number of tests.
+
+        let run_disabled_tests = match env::var("GTEST_ALSO_RUN_DISABLED_TESTS") {
+            Ok(val) => match val.parse::<i32>() {
+                Ok(b) => b > 0,
+                Err(_) => false,
+            },
+            Err(_) => false,
+        };
+
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        let num = Some(exec::get_tests(&test_executable)?.len());
+        let num = Some(exec::get_tests(&test_executable, run_disabled_tests)?.len());
         pb.finish_and_clear();
 
         num

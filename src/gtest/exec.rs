@@ -14,7 +14,10 @@ use super::parse;
 use super::Status;
 use super::TestResult;
 
-pub fn get_tests<P: Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>, String> {
+pub fn get_tests<P: Into<PathBuf>>(
+    test_executable: P,
+    include_disabled_tests: bool,
+) -> Result<HashSet<String>, String> {
     let result = Command::new(test_executable.into())
         .args(&["--gtest_list_tests"])
         .output()
@@ -37,10 +40,17 @@ pub fn get_tests<P: Into<PathBuf>>(test_executable: P) -> Result<HashSet<String>
                 .split_whitespace()
                 .next()
                 .ok_or_else(|| format!("Expected test case on line: {}", &line))?;
-            tests.insert(match current_test {
+
+            let test = match current_test {
                 Some(t) => [t, case].concat(),
                 None => panic!("Couldn't determine test name"),
-            });
+            };
+
+            if !include_disabled_tests && test.contains("DISABLED_") {
+                continue;
+            }
+
+            tests.insert(test);
         }
     }
 
