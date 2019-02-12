@@ -121,12 +121,7 @@ pub fn run<P: Into<PathBuf>>(
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
-        exec::process_shard(
-            cmd,
-            sender.clone(),
-            progress_shard,
-            progress_global.clone(),
-        )?;
+        exec::process_shard(cmd, sender.clone(), progress_shard, progress_global.clone())?;
     }
 
     // Close the sender in this thread.
