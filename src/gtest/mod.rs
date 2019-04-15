@@ -138,19 +138,30 @@ pub fn run<P: Into<PathBuf>>(
 
     //////////////////////////////////////////
 
+    struct ShardStats {
+        num_passed: usize,
+        num_failed: usize,
+    }
+
     // Report successes or failures globally.
     let reporter = thread::spawn(move || {
         // We wait to be unparked from the outside at the right time.
         thread::park();
 
-        let mut num_failures = 0;
+        let mut stats = ShardStats {
+            num_passed: 0,
+            num_failed: 0,
+        };
+
         for result in receiver.iter() {
             if !result.status.is_terminal() {
                 continue;
             }
 
             if result.status.is_failed() {
-                num_failures += 1;
+                stats.num_failed += 1;
+            } else {
+                stats.num_passed += 1;
             }
 
             if result.status.is_failed() || verbosity > 2 {
@@ -160,7 +171,7 @@ pub fn run<P: Into<PathBuf>>(
             }
         }
 
-        num_failures
+        stats
     });
 
     // Start the reporter immediately if we log all output.
@@ -185,30 +196,21 @@ pub fn run<P: Into<PathBuf>>(
         reporter.thread().unpark();
     }
 
-    let num_failures = reporter.join().unwrap();
+    let stats = reporter.join().unwrap();
 
-    if num_failures == 0 {
+    if stats.num_failed == 0 {
         if verbosity > 0 {
-            let message = if num_tests.is_some() {
-                format!("{} tests passed", num_tests.unwrap())
-            } else {
-                "All tests passed".to_string()
-            };
-
+            let message = format!("{} tests passed", stats.num_passed);
             println!("{}", style(message).bold().green());
         }
     } else {
-        let message = if num_tests.is_some() {
-            format!(
-                "{} out of {} tests failed\n",
-                num_failures,
-                num_tests.unwrap()
-            )
-        } else {
-            format!("{} tests failed\n", num_failures)
-        };
+        let message = format!(
+            "{} out of {} tests failed",
+            stats.num_failed,
+            stats.num_passed + stats.num_failed
+        );
         println!("{}", style(message).bold().red());
     }
 
-    Ok(num_failures)
+    Ok(stats.num_failed)
 }
