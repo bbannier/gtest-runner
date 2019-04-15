@@ -57,7 +57,7 @@ pub fn get_tests<P: Into<PathBuf>>(
     Ok(tests)
 }
 
-pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
+pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: u64, jobs: u64) -> Command {
     let mut child = Command::new(&test_executable.into());
 
     child.env("GTEST_SHARD_INDEX", job_index.to_string());

@@ -52,11 +52,7 @@ pub struct TestResult {
 /// This function takes the path to a gtest executable and number
 /// of shards. It then executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run<P: Into<PathBuf>>(
-    test_executable: P,
-    jobs: usize,
-    verbosity: usize,
-) -> Result<usize, String> {
+pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> Result<u64, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
@@ -76,7 +72,7 @@ pub fn run<P: Into<PathBuf>>(
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
+        let num = exec::get_tests(&test_executable, run_disabled_tests)?.len() as u64;
         pb.finish_and_clear();
 
         num
@@ -91,7 +87,7 @@ pub fn run<P: Into<PathBuf>>(
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
+    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests)));
     progress_global.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
@@ -127,8 +123,8 @@ pub fn run<P: Into<PathBuf>>(
     //////////////////////////////////////////
 
     struct ShardStats {
-        num_passed: usize,
-        num_failed: usize,
+        num_passed: u64,
+        num_failed: u64,
     }
 
     // Report successes or failures globally.

@@ -69,13 +69,13 @@ fn main() -> Result<(), String> {
     let jobs = matches
         .value_of("jobs")
         .ok_or("Expected the 'jobs' parameter to be set")?
-        .parse::<usize>()
+        .parse::<u64>()
         .map_err(|e| e.to_string())?;
 
     let verbosity = matches
         .value_of("verbosity")
         .ok_or("Expected the 'verbosity' parameter to be set")?
-        .parse::<usize>()
+        .parse::<u64>()
         .map_err(|e| e.to_string())?;
 
     let trace = matches.is_present("trace");
@@ -100,5 +100,5 @@ fn main() -> Result<(), String> {
 
     close_trace_file!();
 
-    std::process::exit(ret_vec.iter().sum::<usize>() as i32);
+    std::process::exit(ret_vec.iter().sum::<u64>() as i32);
 }
