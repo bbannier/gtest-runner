@@ -212,5 +212,19 @@ pub fn run<P: Into<PathBuf>>(
         println!("{}", style(message).bold().red());
     }
 
+    // Check that the number of reported tests is consistent with the number of expected tests.
+    // This mostly serves to validate that we did not accidentally drop test results.
+    if let Some(num_tests) = num_tests {
+        let num_tests_reported = stats.num_failed + stats.num_passed;
+        if num_tests != num_tests_reported {
+            eprintln!(
+                "Expected {} tests but only saw results from {}",
+                num_tests, num_tests_reported,
+            );
+
+            return Ok(1);
+        }
+    }
+
     Ok(stats.num_failed)
 }
