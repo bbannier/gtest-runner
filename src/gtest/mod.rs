@@ -62,7 +62,7 @@ pub fn run<P: Into<PathBuf>>(
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
 
     // If we show some sort of progress bar determine the total number of tests before running shards.
-    let num_tests = if verbosity > 0 {
+    let num_tests = {
         trace_scoped!("Determine number of tests");
 
         let run_disabled_tests = match env::var("GTEST_ALSO_RUN_DISABLED_TESTS") {
@@ -76,19 +76,14 @@ pub fn run<P: Into<PathBuf>>(
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        let num = Some(exec::get_tests(&test_executable, run_disabled_tests)?.len());
+        let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
         pb.finish_and_clear();
 
         num
-    } else {
-        None
     };
 
     // Do not execute more jobs than tests.
-    let jobs = match num_tests {
-        Some(num_tests) => min(jobs, num_tests),
-        _ => jobs,
-    };
+    let jobs = min(jobs, num_tests);
 
     // Run tests.
     let m = MultiProgress::new();
@@ -96,18 +91,11 @@ pub fn run<P: Into<PathBuf>>(
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests.unwrap_or_else(|| 0) as u64)));
-    if num_tests.is_some() {
-        progress_global.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
-        );
-    } else {
-        progress_global.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} {msg} {bar} [{pos}/?] {elapsed_precise}"),
-        );
-    }
+    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
+    progress_global.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
+    );
     progress_global.set_message("Running tests ...");
 
     // Make sure the elapsed time is updated even if no updates arrive from shards.
@@ -214,16 +202,14 @@ pub fn run<P: Into<PathBuf>>(
 
     // Check that the number of reported tests is consistent with the number of expected tests.
     // This mostly serves to validate that we did not accidentally drop test results.
-    if let Some(num_tests) = num_tests {
-        let num_tests_reported = stats.num_failed + stats.num_passed;
-        if num_tests != num_tests_reported {
-            eprintln!(
-                "Expected {} tests but only saw results from {}",
-                num_tests, num_tests_reported,
-            );
+    let num_tests_reported = stats.num_failed + stats.num_passed;
+    if num_tests != num_tests_reported {
+        eprintln!(
+            "Expected {} tests but only saw results from {}",
+            num_tests, num_tests_reported,
+        );
 
-            return Ok(1);
-        }
+        return Ok(1);
     }
 
     Ok(stats.num_failed)
