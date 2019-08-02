@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
+#![warn(unused_extern_crates)]
 
 #[macro_use]
 extern crate clap;
@@ -9,6 +10,7 @@ extern crate rs_tracing;
 #[cfg(test)]
 extern crate itertools;
 
+extern crate actix;
 extern crate console;
 extern crate indicatif;
 extern crate num_cpus;

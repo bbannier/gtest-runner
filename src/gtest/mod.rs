@@ -47,6 +47,37 @@ pub struct TestResult {
     pub status: Status,
 }
 
+struct Run(std::process::Command);
+impl actix::Message for Run {
+    type Result = Result<(), String>;
+}
+
+struct Shard {
+    sender: mpsc::Sender<TestResult>,
+    progress_shard: indicatif::ProgressBar,
+    progress_global: Arc<indicatif::ProgressBar>,
+}
+impl actix::Actor for Shard {
+    type Context = actix::Context<Self>;
+}
+impl actix::Handler<Run> for Shard {
+    type Result = <Run as actix::Message>::Result;
+
+    fn handle(&mut self, msg: Run, _ctx: &mut actix::Context<Self>) -> Self::Result {
+        let mut cmd = msg.0;
+        let child = cmd.spawn().map_err(|e| e.to_string())?;
+
+        // FIXME(bbannier): return a `ShardStats` here.
+        exec::process_shard(
+            child,
+            self.sender.clone(),
+            self.progress_shard.clone(),
+            self.progress_global.clone(),
+        )?;
+        Ok(())
+    }
+}
+
 /// Sharded execution of a gtest executable
 ///
 /// This function takes the path to a gtest executable and number
@@ -102,17 +133,22 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
     let (sender, receiver) = mpsc::channel::<TestResult>();
 
     // Execute the shards.
-    for job in 0..jobs {
-        let cmd = exec::cmd(&test_executable, job, jobs)
-            .spawn()
-            .map_err(|e| e.to_string())?;
 
+    // actix::System::run(|| {
+    //     let addr = actix::SyncArbiter::start(jobs, || Shard{sender);
+    // });
+
+    for job in 0..jobs {
         let progress_shard = if verbosity != 2 {
             ProgressBar::hidden()
         } else {
             m.add(ProgressBar::new(100))
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
+
+        let cmd = exec::cmd(&test_executable, job, jobs)
+            .spawn()
+            .map_err(|e| e.to_string())?;
 
         exec::process_shard(cmd, sender.clone(), progress_shard, progress_global.clone())?;
     }
