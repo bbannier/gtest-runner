@@ -70,13 +70,13 @@ pub fn process_shard(
     child: Child,
     sender: Sender<TestResult>,
     done: Sender<()>,
-) -> Result<(), &'static str> {
+) -> Result<(thread::JoinHandle<()>), &'static str> {
     // TODO(bbannier): Process stdout as well.
     let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
 
     // The output is processed on a separate thread to not block the main
     // thread while we wait for output.
-    thread::spawn(move || {
+    Ok(thread::spawn(move || {
         let lines = reader.lines().map(|line| match line {
             Ok(line) => line,
             Err(err) => panic!(err),
@@ -99,10 +99,8 @@ pub fn process_shard(
                 Status::RUNNING => {}
             }
         }
-    });
 
-    // Signal that we are done processing this shard.
-    done.send(()).unwrap();
-
-    Ok(())
+        // Signal that we are done processing this shard.
+        done.send(()).unwrap();
+    }))
 }
