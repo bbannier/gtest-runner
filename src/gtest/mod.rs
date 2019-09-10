@@ -2,12 +2,12 @@
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
 use console::style;
+use crossbeam::channel;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use std::cmp::min;
 use std::env;
 use std::fs::canonicalize;
 use std::path::PathBuf;
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 
@@ -98,7 +98,7 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
 
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
-    let (sender, receiver) = mpsc::channel::<TestResult>();
+    let (sender, receiver) = channel::unbounded();
 
     // Execute the shards.
     for job in 0..jobs {

@@ -10,6 +10,7 @@ extern crate rs_tracing;
 extern crate itertools;
 
 extern crate console;
+extern crate crossbeam;
 extern crate indicatif;
 extern crate num_cpus;
 

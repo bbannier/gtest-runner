@@ -1,11 +1,11 @@
 use console::style;
+use crossbeam::Sender;
 use indicatif::ProgressBar;
 use std::collections::HashSet;
 use std::convert::Into;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
@@ -70,7 +70,7 @@ pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: u64, jobs: u64) -> C
 
 pub fn process_shard(
     child: Child,
-    sender: mpsc::Sender<TestResult>,
+    sender: Sender<TestResult>,
     progress_shard: ProgressBar,
 ) -> Result<(), &'static str> {
     // TODO(bbannier): Process stdout as well.
