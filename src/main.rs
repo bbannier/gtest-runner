@@ -65,6 +65,15 @@ fn main() -> Result<(), String> {
                 .help("Dumps chrome://tracing trace to current directory")
                 .long_help("Control tracing output.\n\nIf this flag is present a chrome://tracing execution trace (http://dev.chromium.org/developers/how-tos/trace-event-profiling-tool) will be dumped to the current directory as `<pid>.trace` which can be used to analyze e.g., temporal relations between tests or their duration. The resulting file can e.g., directly be loaded into Google Chrome under chrome://tracing, or converted to HTML with `trace2html`."),
         )
+        .arg(
+            Arg::with_name("repeat")
+                .long("repeat")
+                .short("r")
+                .takes_value(true)
+                .default_value("0")
+                .help("TODO(bbannier)")
+                .long_help("TODO(bbannier)")
+            )
         .get_matches();
 
     let jobs = matches
@@ -81,6 +90,12 @@ fn main() -> Result<(), String> {
 
     let trace = matches.is_present("trace");
 
+    let repeat = matches
+        .value_of("repeat")
+        .ok_or("Expected the 'repeat' parameter to be present")?
+        .parse::<u64>()
+        .map_err(|e| e.to_string())?;
+
     let test_executables = matches
         .values_of("test_executable")
         .ok_or("Expected the 'test_executable' parameter to be set")?;
@@ -96,7 +111,7 @@ fn main() -> Result<(), String> {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
         trace_scoped!(&exe);
-        ret_vec.push(gtest::run(exe, jobs, verbosity)?);
+        ret_vec.push(gtest::run(exe, None, jobs, verbosity, repeat)?);
     }
 
     close_trace_file!();

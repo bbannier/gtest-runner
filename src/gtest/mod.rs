@@ -52,10 +52,20 @@ pub struct TestResult {
 /// This function takes the path to a gtest executable and number
 /// of shards. It then executes the tests in a sharded way and
 /// returns the number of failures.
-pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> Result<u64, String> {
+pub fn run<P: Into<PathBuf>>(
+    test_executable: P,
+    gtest_filter: Option<String>,
+    jobs: u64,
+    verbosity: u64,
+    repeat: u64,
+) -> Result<u64, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
+
+    if let Some(filter) = gtest_filter {
+        env::set_var("GTEST_FILTER", filter);
+    }
 
     // If we show some sort of progress bar determine the total number of tests before running shards.
     let num_tests = {
@@ -176,15 +186,15 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
                     Status::FAILED | Status::ABORTED => {
                         progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
                         progress_global.inc(1);
+
+                        stats.failed_tests.push(result.clone());
                     }
                     Status::STARTING | Status::RUNNING => {}
                 }
 
                 // Update statistics.
                 if result.status.is_terminal() {
-                    if result.status.is_failed() {
-                        stats.failed_tests.push(result.clone());
-                    } else {
+                    if !result.status.is_failed() {
                         stats.num_passed += 1;
                     }
                 }
@@ -230,10 +240,19 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
         }
         let message = format!(
             "{} out of {} tests failed",
-            stats.failed_tests.len(),
+            stats.num_failed(),
             stats.num_passed + stats.num_failed()
         );
         println!("{}", style(message).bold().red());
+    }
+
+    if repeat != 0 && !stats.failed_tests.is_empty() {
+        let filter = stats
+            .failed_tests
+            .iter()
+            .fold("".to_string(), |acc, t| acc + ":" + &t.testcase);
+
+        return run(test_executable, Some(filter), jobs, verbosity, repeat - 1);
     }
 
     // Check that the number of reported tests is consistent with the number of expected tests.
