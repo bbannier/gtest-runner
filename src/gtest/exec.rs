@@ -6,7 +6,6 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
@@ -73,7 +72,6 @@ pub fn process_shard(
     child: Child,
     sender: mpsc::Sender<TestResult>,
     progress_shard: ProgressBar,
-    progress_global: Arc<ProgressBar>,
 ) -> Result<(), &'static str> {
     // TODO(bbannier): Process stdout as well.
     let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
@@ -96,12 +94,10 @@ pub fn process_shard(
                 }
                 Status::OK => {
                     trace_end!(&t.testcase);
-                    progress_global.inc(1);
                     sender.send(t.clone()).unwrap();
                 }
                 Status::FAILED | Status::ABORTED => {
                     trace_end!(&t.testcase);
-                    progress_global.inc(1);
                     progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
                     thread::sleep(Duration::from_millis(500));
                     sender.send(t.clone()).unwrap();

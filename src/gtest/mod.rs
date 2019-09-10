@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 
 mod exec;
 mod parse;
@@ -114,7 +113,7 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
-        exec::process_shard(cmd, sender.clone(), progress_shard, progress_global.clone())?;
+        exec::process_shard(cmd, sender.clone(), progress_shard)?;
     }
 
     // Close the sender in this thread.
@@ -124,53 +123,65 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
 
     struct ShardStats {
         num_passed: u64,
-        num_failed: u64,
+        failed_tests: Vec<TestResult>,
+    }
+
+    impl ShardStats {
+        fn num_failed(&self) -> u64 {
+            self.failed_tests.len() as u64
+        }
     }
 
     // Report successes or failures globally.
-    let reporter = thread::spawn(move || {
-        // We wait to be unparked from the outside at the right time.
-        thread::park();
+    let reporter = {
+        thread::spawn(move || {
+            let mut stats = ShardStats {
+                num_passed: 0,
+                failed_tests: vec![],
+            };
 
-        let mut stats = ShardStats {
-            num_passed: 0,
-            num_failed: 0,
-        };
+            for result in receiver.iter() {
+                if !result.status.is_terminal() {
+                    continue;
+                }
 
-        for result in receiver.iter() {
-            if !result.status.is_terminal() {
-                continue;
-            }
+                if result.status.is_failed() {
+                    stats.failed_tests.push(result.clone());
+                } else {
+                    stats.num_passed += 1;
+                }
 
-            if result.status.is_failed() {
-                stats.num_failed += 1;
-            } else {
-                stats.num_passed += 1;
-            }
+                if result.status.is_terminal() && verbosity > 2 {
+                    for line in &result.log {
+                        println!("{}", line);
+                    }
+                }
 
-            if result.status.is_failed() || verbosity > 2 {
-                for line in &result.log {
-                    println!("{}", line);
+                match result.status {
+                    Status::OK => {
+                        progress_global.inc(1);
+                    }
+                    Status::FAILED | Status::ABORTED => {
+                        progress_global.inc(1);
+                    }
+                    Status::STARTING | Status::RUNNING => {}
+                }
+
+                // Update statistics.
+                if result.status.is_terminal() {
+                    if result.status.is_failed() {
+                        stats.failed_tests.push(result.clone());
+                    } else {
+                        stats.num_passed += 1;
+                    }
                 }
             }
-        }
 
-        stats
-    });
+            progress_global.finish_and_clear();
 
-    // Start the reporter immediately if we log all output.
-    if verbosity > 2 {
-        reporter.thread().unpark();
-    }
-
-    // Run a spinlock checking whether all processes have finished
-    // and finishing the global progress.
-    let _waiter = thread::spawn(move || {
-        while Arc::strong_count(&progress_global) > 1 {
-            thread::sleep(Duration::from_millis(10));
-        }
-        progress_global.finish();
-    });
+            stats
+        })
+    };
 
     // This implicitly joins the waiter thread.
     m.join_and_clear().map_err(|e| e.to_string())?;
@@ -182,23 +193,30 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
 
     let stats = reporter.join().unwrap();
 
-    if stats.num_failed == 0 {
+    if stats.failed_tests.is_empty() {
         if verbosity > 0 {
             let message = format!("{} tests passed", stats.num_passed);
             println!("{}", style(message).bold().green());
         }
     } else {
+        if verbosity <= 2 {
+            for test in &stats.failed_tests {
+                for line in &test.log {
+                    println!("{}", line);
+                }
+            }
+        }
         let message = format!(
             "{} out of {} tests failed",
-            stats.num_failed,
-            stats.num_passed + stats.num_failed
+            stats.failed_tests.len(),
+            stats.num_passed + stats.num_failed()
         );
         println!("{}", style(message).bold().red());
     }
 
     // Check that the number of reported tests is consistent with the number of expected tests.
     // This mostly serves to validate that we did not accidentally drop test results.
-    let num_tests_reported = stats.num_failed + stats.num_passed;
+    let num_tests_reported = stats.num_failed() + stats.num_passed;
     if num_tests != num_tests_reported {
         eprintln!(
             "Expected {} tests but only saw results from {}",
@@ -208,5 +226,5 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
         return Ok(1);
     }
 
-    Ok(stats.num_failed)
+    Ok(stats.num_failed())
 }
