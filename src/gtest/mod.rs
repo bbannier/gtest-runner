@@ -152,68 +152,66 @@ pub fn run<P: Into<PathBuf>>(
     }
 
     // Report successes or failures globally.
-    let reporter = {
-        thread::spawn(move || {
-            let mut stats = ShardStats {
-                num_passed: 0,
-                failed_tests: vec![],
-            };
+    let reporter = thread::spawn(move || {
+        let mut stats = ShardStats {
+            num_passed: 0,
+            failed_tests: vec![],
+        };
 
-            let mut sel = channel::Select::new();
-            for done in &dones {
-                sel.recv(done);
-            }
+        let mut sel = channel::Select::new();
+        for done in &dones {
+            sel.recv(done);
+        }
 
-            for result in receiver.iter() {
-                let shard = result.shard.unwrap();
-                let progress_shard = &progress_shards[shard as usize];
+        for result in receiver.iter() {
+            let shard = result.shard.unwrap();
+            let progress_shard = &progress_shards[shard as usize];
 
-                progress_shard.inc(1);
+            progress_shard.inc(1);
 
-                if result.status.is_terminal() && verbosity > 2 {
-                    for line in &result.log {
-                        println!("{}", line);
-                    }
-                }
-
-                match result.status {
-                    Status::STARTING => {
-                        progress_shard.set_message(&result.testcase);
-                    }
-                    Status::OK => {
-                        progress_global.inc(1);
-                    }
-                    Status::FAILED | Status::ABORTED => {
-                        progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
-                        progress_global.inc(1);
-
-                        stats.failed_tests.push(result.clone());
-                    }
-                    Status::STARTING | Status::RUNNING => {}
-                }
-
-                // Update statistics.
-                if result.status.is_terminal() {
-                    if !result.status.is_failed() {
-                        stats.num_passed += 1;
-                    }
-                }
-
-                // Check if any shards can be cleaned up.
-                match sel.try_ready() {
-                    Ok(index) => {
-                        sel.remove(index);
-                        progress_shard.finish_and_clear();
-                    }
-                    _ => {}
+            if result.status.is_terminal() && verbosity > 2 {
+                for line in &result.log {
+                    println!("{}", line);
                 }
             }
 
-            progress_global.finish_and_clear();
+            match result.status {
+                Status::STARTING => {
+                    progress_shard.set_message(&result.testcase);
+                }
+                Status::OK => {
+                    progress_global.inc(1);
+                }
+                Status::FAILED | Status::ABORTED => {
+                    progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
+                    progress_global.inc(1);
 
-            stats
-        })
-    };
+                    stats.failed_tests.push(result.clone());
+                }
+                Status::RUNNING => {}
+            }
+
+            // Update statistics.
+            if result.status.is_terminal() {
+                if !result.status.is_failed() {
+                    stats.num_passed += 1;
+                }
+            }
+
+            // Check if any shards can be cleaned up.
+            match sel.try_ready() {
+                Ok(index) => {
+                    sel.remove(index);
+                    progress_shard.finish_and_clear();
+                }
+                _ => {}
+            }
+        }
+
+        progress_global.finish_and_clear();
+
+        stats
+    });
 
     // This implicitly joins the waiter thread.
     m.join_and_clear().map_err(|e| e.to_string())?;
