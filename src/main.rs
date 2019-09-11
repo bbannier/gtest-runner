@@ -4,6 +4,9 @@
 #[macro_use]
 extern crate rs_tracing;
 
+#[macro_use(defer)]
+extern crate scopeguard;
+
 #[cfg(test)]
 extern crate itertools;
 
@@ -77,6 +80,7 @@ fn main() -> Result<(), String> {
 
     if opt.trace {
         open_trace_file!(".").unwrap();
+        defer! {{close_trace_file!();}};
     }
 
     let mut ret_vec = Vec::new();
@@ -93,8 +97,6 @@ fn main() -> Result<(), String> {
             opt.repeat,
         )?);
     }
-
-    close_trace_file!();
 
     std::process::exit(ret_vec.iter().sum::<u64>() as i32);
 }
