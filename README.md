@@ -88,4 +88,3 @@ same machine.
 Sharding in googletest is controlled by the `GTEST_TOTAL_SHARDS` and
 `GTEST_SHARD_INDEX` environment variable. `gtest-runner` takes care of setting
 up the execution environment, shard execution and reporting.
-
