@@ -4,7 +4,7 @@ categories = ["command-line-utilities"]
 description = "Run gtest executables in parallel"
 homepage = "https://github.com/bbannier/gtest-runner"
 license = "MIT"
-version = "0.0.15"
+version = "0.0.16"
 readme = "README.md"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 
@@ -13,14 +13,14 @@ name = "gtest-runner"
 path = "src/main.rs"
 
 [dependencies]
-console = "0.9.0"
-indicatif = "0.12.0"
-num_cpus = "1.9.0"
-regex = "1.1.0"
-rs_tracing = { version = "1.0.1", features = ["rs_tracing"] }
-crossbeam = "0.7.2"
+console = "0.9"
+indicatif = "0.12"
+num_cpus = "1.9"
+regex = "1.1"
+rs_tracing = { version = "1.0", features = ["rs_tracing"] }
+crossbeam = "0.7"
 structopt = "0.3"
-scopeguard = "1.0.0"
+scopeguard = "1.0"
 
 [dev-dependencies]
-itertools = "0.8.0"
+itertools = "0.8"
