@@ -12,23 +12,22 @@ pub struct Parser<T> {
     testcase: Option<String>,
     log: Vec<String>,
     reader: T,
+
+    starting: regex::Regex,
+    ok: regex::Regex,
+    failed: regex::Regex,
 }
 
 impl<T> Parser<T> {
     fn parse(&mut self, line: String) -> Result<Option<TestResult>, String> {
-        let starting = regex::Regex::new(r"^\[ RUN      \] .*").map_err(|e| e.to_string())?;
-        let ok = regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
-        let failed =
-            regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").map_err(|e| e.to_string())?;
-
         let status = {
             let line = strip_ansi_codes(&line);
 
-            if ok.is_match(&line) {
+            if self.ok.is_match(&line) {
                 Status::OK
-            } else if failed.is_match(&line) {
+            } else if self.failed.is_match(&line) {
                 Status::FAILED
-            } else if starting.is_match(&line) {
+            } else if self.starting.is_match(&line) {
                 Status::STARTING
             } else {
                 Status::RUNNING
@@ -107,6 +106,10 @@ where
             testcase: None,
             log: vec![],
             reader,
+
+            starting: regex::Regex::new(r"^\[ RUN      \] .*").unwrap(),
+            ok: regex::Regex::new(r"^\[       OK \] .* \(\d* .*\)").unwrap(),
+            failed: regex::Regex::new(r"^\[  FAILED  \] .* \(\d* .*\)").unwrap(),
         }
     }
 }
