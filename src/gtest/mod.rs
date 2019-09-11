@@ -44,6 +44,7 @@ pub struct TestResult {
     pub testcase: String,
     pub log: Vec<String>,
     pub status: Status,
+    pub shard: Option<u64>,
 }
 
 /// Sharded execution of a gtest executable
@@ -99,9 +100,15 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
     let (sender, receiver) = channel::unbounded();
+    let mut dones = vec![];
+
+    let mut progress_shards = vec![];
 
     // Execute the shards.
     for job in 0..jobs {
+        let (done1, done2) = channel::unbounded();
+        dones.push(done2);
+
         let cmd = exec::cmd(&test_executable, job, jobs)
             .spawn()
             .map_err(|e| e.to_string())?;
@@ -113,7 +120,9 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
-        exec::process_shard(cmd, sender.clone(), progress_shard)?;
+        progress_shards.push(progress_shard);
+
+        exec::process_shard(job, cmd, sender.clone(), done1)?;
     }
 
     // Close the sender in this thread.
@@ -140,16 +149,16 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
                 failed_tests: vec![],
             };
 
-            for result in receiver.iter() {
-                if !result.status.is_terminal() {
-                    continue;
-                }
+            let mut sel = channel::Select::new();
+            for done in &dones {
+                sel.recv(done);
+            }
 
-                if result.status.is_failed() {
-                    stats.failed_tests.push(result.clone());
-                } else {
-                    stats.num_passed += 1;
-                }
+            for result in receiver.iter() {
+                let shard = result.shard.unwrap();
+                let progress_shard = &progress_shards[shard as usize];
+
+                progress_shard.inc(1);
 
                 if result.status.is_terminal() && verbosity > 2 {
                     for line in &result.log {
@@ -158,10 +167,14 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
                 }
 
                 match result.status {
+                    Status::STARTING => {
+                        progress_shard.set_message(&result.testcase);
+                    }
                     Status::OK => {
                         progress_global.inc(1);
                     }
                     Status::FAILED | Status::ABORTED => {
+                        progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
                         progress_global.inc(1);
                     }
                     Status::STARTING | Status::RUNNING => {}
@@ -174,6 +187,15 @@ pub fn run<P: Into<PathBuf>>(test_executable: P, jobs: u64, verbosity: u64) -> R
                     } else {
                         stats.num_passed += 1;
                     }
+                }
+
+                // Check if any shards can be cleaned up.
+                match sel.try_ready() {
+                    Ok(index) => {
+                        sel.remove(index);
+                        progress_shard.finish_and_clear();
+                    }
+                    _ => {}
                 }
             }
 

@@ -1,13 +1,10 @@
-use console::style;
 use crossbeam::Sender;
-use indicatif::ProgressBar;
 use std::collections::HashSet;
 use std::convert::Into;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::thread;
-use std::time::Duration;
 
 use super::parse;
 use super::Status;
@@ -69,9 +66,10 @@ pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: u64, jobs: u64) -> C
 }
 
 pub fn process_shard(
+    shard: u64,
     child: Child,
     sender: Sender<TestResult>,
-    progress_shard: ProgressBar,
+    done: Sender<()>,
 ) -> Result<(), &'static str> {
     // TODO(bbannier): Process stdout as well.
     let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
@@ -85,29 +83,26 @@ pub fn process_shard(
         });
 
         for t in parse::Parser::new(lines) {
-            progress_shard.inc(1);
+            let mut t = t;
+            t.shard = Some(shard);
 
+            sender.send(t.clone()).unwrap();
+
+            // Update tracing.
             match t.status {
                 Status::STARTING => {
                     trace_begin!(&t.testcase);
-                    progress_shard.set_message(&t.testcase.to_string());
                 }
-                Status::OK => {
+                Status::OK | Status::FAILED | Status::ABORTED => {
                     trace_end!(&t.testcase);
-                    sender.send(t.clone()).unwrap();
                 }
-                Status::FAILED | Status::ABORTED => {
-                    trace_end!(&t.testcase);
-                    progress_shard.set_message(&format!("{}", style(&t.testcase).red()));
-                    thread::sleep(Duration::from_millis(500));
-                    sender.send(t.clone()).unwrap();
-                }
-                Status::RUNNING => { /*Ignoring running updates for now.*/ }
+                Status::RUNNING => {}
             }
         }
-
-        progress_shard.finish_and_clear();
     });
+
+    // Signal that we are done processing this shard.
+    done.send(()).unwrap();
 
     Ok(())
 }

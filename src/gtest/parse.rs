@@ -65,6 +65,7 @@ impl<T> Parser<T> {
                         .ok_or("Expected a testcase to be set")?,
                     log: self.log.clone(),
                     status: status.clone(),
+                    shard: None,
                 };
 
                 // Unset the current test case for terminal transitions.
@@ -85,6 +86,7 @@ impl<T> Parser<T> {
                 testcase: self.testcase.clone().unwrap(),
                 log: self.log.clone(),
                 status: Status::ABORTED,
+                shard: None,
             };
 
             self.testcase = None;
