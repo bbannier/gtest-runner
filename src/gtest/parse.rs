@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 #[cfg(test)]
 use itertools::Itertools;
 
-use gtest::{Status, TestResult};
+use crate::gtest::{Status, TestResult};
 
 pub struct Parser<T> {
     testcase: Option<String>,

@@ -4,6 +4,7 @@
 use console::style;
 use crossbeam::channel;
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use rs_tracing::{trace_scoped, trace_scoped_internal};
 use std::cmp::min;
 use std::env;
 use std::fs::canonicalize;

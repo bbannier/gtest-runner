@@ -1,22 +1,12 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
-#[macro_use]
-extern crate rs_tracing;
-
-#[macro_use(defer)]
-extern crate scopeguard;
-
-#[cfg(test)]
-extern crate itertools;
-
-extern crate console;
-extern crate crossbeam;
-extern crate indicatif;
-extern crate num_cpus;
-extern crate structopt;
-
 use console::style;
+use rs_tracing::{
+    close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
+    trace_scoped_internal, trace_to_file_internal,
+};
+use scopeguard::defer;
 use structopt::StructOpt;
 
 mod gtest;
