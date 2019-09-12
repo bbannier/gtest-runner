@@ -193,19 +193,14 @@ pub fn run<P: Into<PathBuf>>(
             }
 
             // Update statistics.
-            if result.status.is_terminal() {
-                if !result.status.is_failed() {
-                    stats.num_passed += 1;
-                }
+            if result.status.is_terminal() && !result.status.is_failed() {
+                stats.num_passed += 1;
             }
 
             // Check if any shards can be cleaned up.
-            match sel.try_ready() {
-                Ok(index) => {
-                    sel.remove(index);
-                    progress_shard.finish_and_clear();
-                }
-                _ => {}
+            if let Ok(index) = sel.try_ready() {
+                sel.remove(index);
+                progress_shard.finish_and_clear();
             }
         }
 
