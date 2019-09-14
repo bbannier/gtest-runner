@@ -54,6 +54,12 @@ pub fn get_tests<P: Into<PathBuf>>(
     Ok(tests)
 }
 
+#[test]
+fn test_get_tests() {
+    let tests = get_tests("target/debug/dummy-gtest-executable", false).unwrap();
+    assert_eq!(2, tests.len());
+}
+
 pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
     let mut child = Command::new(&test_executable.into());
 

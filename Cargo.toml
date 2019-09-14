@@ -8,6 +8,7 @@ version = "0.0.17"
 readme = "README.md"
 authors = ["Benjamin Bannier <bbannier@gmail.com>"]
 edition = "2018"
+autotests = false
 
 [[bin]]
 name = "gtest-runner"
@@ -25,3 +26,8 @@ scopeguard = "1.0"
 
 [dev-dependencies]
 itertools = "0.8"
+
+[[bin]]
+name = "dummy-gtest-executable"
+path = "tests/dummy_gtest_executable.rs"
+test = true

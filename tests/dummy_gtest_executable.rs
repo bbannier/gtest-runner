@@ -1,0 +1,70 @@
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(rename_all = "verbatim")]
+struct GtestOpt {
+    #[structopt(long)]
+    gtest_filter: Option<String>,
+
+    #[structopt(long, default_value = "0", env = "GTEST_SHARD_INDEX")]
+    gtest_shard_index: usize,
+
+    #[structopt(long, default_value = "1", env = "GTEST_TOTAL_SHARDS")]
+    gtest_total_shards: usize,
+
+    #[structopt(long)]
+    gtest_list_tests: bool,
+}
+
+fn main() {
+    let opt = GtestOpt::from_args();
+
+    if opt.gtest_list_tests {
+        println!(
+            r#"NOPE.
+  NOPE0
+  NOPE1"#
+        );
+        return;
+    }
+
+    assert!(
+        opt.gtest_shard_index < opt.gtest_total_shards,
+        "Shard index ({}) is too large for number of shards ({})",
+        opt.gtest_shard_index,
+        opt.gtest_total_shards
+    );
+
+    match opt.gtest_total_shards {
+        1 => {
+            println!(
+                r#"[==========] Running 2 tests from 1 test case.
+[----------] Global test environment set-up.
+[----------] 2 tests from NOPE
+[ RUN      ] NOPE.NOPE0
+[       OK ] NOPE.NOPE0 (0 ms)
+[ RUN      ] NOPE.NOPE1
+[       OK ] NOPE.NOPE1 (0 ms)"#
+            );
+            return;
+        }
+        2 => {
+            println!(
+                r#"[==========] Running 1 tests from 1 test case.
+[----------] Global test environment set-up.
+[----------] 1 tests from NOPE
+[ RUN      ] NOPE.NOPE{}
+[       OK ] NOPE.NOPE{} (0 ms)"#,
+                opt.gtest_shard_index, opt.gtest_shard_index
+            );
+            return;
+        }
+        n => {
+            assert!(
+                false,
+                "Request {} shards, but only up to 2 shards are supported",
+                n
+            );
+        }
+    };
+}
