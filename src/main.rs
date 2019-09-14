@@ -24,7 +24,7 @@ struct Opt {
     /// This flag can be controlled with an environment variable and by default is set to the
     /// number of processors available to the runner process.
     #[structopt(long, short, env = "GTEST_RUNNER_JOBS")]
-    jobs: Option<u64>,
+    jobs: Option<usize>,
 
     /// Runner verbosity
     ///
@@ -82,11 +82,11 @@ fn main() -> Result<(), String> {
         ret_vec.push(gtest::run(
             exe,
             None,
-            opt.jobs.unwrap_or(num_cpus::get() as u64),
+            opt.jobs.unwrap_or(num_cpus::get()),
             opt.verbosity,
             opt.repeat,
         )?);
     }
 
-    std::process::exit(ret_vec.iter().sum::<u64>() as i32);
+    std::process::exit(ret_vec.iter().sum::<usize>() as i32);
 }

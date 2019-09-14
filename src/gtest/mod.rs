@@ -45,7 +45,7 @@ pub struct TestResult {
     pub testcase: String,
     pub log: Vec<String>,
     pub status: Status,
-    pub shard: Option<u64>,
+    pub shard: Option<usize>,
 }
 
 /// Sharded execution of a gtest executable
@@ -56,10 +56,10 @@ pub struct TestResult {
 pub fn run<P: Into<PathBuf>>(
     test_executable: P,
     gtest_filter: Option<String>,
-    jobs: u64,
+    jobs: usize,
     verbosity: u64,
     repeat: u64,
-) -> Result<u64, String> {
+) -> Result<usize, String> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
     let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
@@ -83,7 +83,7 @@ pub fn run<P: Into<PathBuf>>(
         let pb = ProgressBar::new(100);
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
-        let num = exec::get_tests(&test_executable, run_disabled_tests)?.len() as u64;
+        let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
         pb.finish_and_clear();
 
         num
@@ -98,7 +98,7 @@ pub fn run<P: Into<PathBuf>>(
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
-    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests)));
+    let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
     progress_global.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
@@ -142,13 +142,13 @@ pub fn run<P: Into<PathBuf>>(
     //////////////////////////////////////////
 
     struct ShardStats {
-        num_passed: u64,
+        num_passed: usize,
         failed_tests: Vec<TestResult>,
     }
 
     impl ShardStats {
-        fn num_failed(&self) -> u64 {
-            self.failed_tests.len() as u64
+        fn num_failed(&self) -> usize {
+            self.failed_tests.len()
         }
     }
 
