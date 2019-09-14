@@ -82,7 +82,7 @@ fn main() -> Result<(), String> {
         ret_vec.push(gtest::run(
             exe,
             None,
-            opt.jobs.unwrap_or(num_cpus::get()),
+            opt.jobs.unwrap_or_else(num_cpus::get),
             opt.verbosity,
             opt.repeat,
         )?);

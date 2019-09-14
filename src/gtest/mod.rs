@@ -82,7 +82,7 @@ pub fn run<P: Into<PathBuf>>(
 
         let pb = ProgressBar::new(100);
 
-        if verbosity < 1{
+        if verbosity < 1 {
             pb.set_draw_target(ProgressDrawTarget::hidden());
         }
 

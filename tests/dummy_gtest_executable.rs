@@ -46,7 +46,6 @@ fn main() {
 [ RUN      ] NOPE.NOPE1
 [       OK ] NOPE.NOPE1 (0 ms)"#
             );
-            return;
         }
         2 => {
             println!(
@@ -57,11 +56,9 @@ fn main() {
 [       OK ] NOPE.NOPE{} (0 ms)"#,
                 opt.gtest_shard_index, opt.gtest_shard_index
             );
-            return;
         }
         n => {
-            assert!(
-                false,
+            panic!(
                 "Request {} shards, but only up to 2 shards are supported",
                 n
             );
