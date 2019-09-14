@@ -81,6 +81,11 @@ pub fn run<P: Into<PathBuf>>(
         };
 
         let pb = ProgressBar::new(100);
+
+        if verbosity < 1{
+            pb.set_draw_target(ProgressDrawTarget::hidden());
+        }
+
         pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
         pb.set_message("Determining number of tests ...");
         let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
