@@ -205,6 +205,7 @@ pub fn run<P: Into<PathBuf>>(
             // Check if any shards can be cleaned up.
             if let Ok(index) = sel.try_ready() {
                 sel.remove(index);
+                let progress_shard = &progress_shards[index];
                 progress_shard.finish_and_clear();
             }
         }
