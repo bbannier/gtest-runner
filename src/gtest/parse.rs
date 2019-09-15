@@ -1,12 +1,10 @@
-use console::strip_ansi_codes;
+use {
+    crate::gtest::{Status, TestResult},
+    console::strip_ansi_codes,
+};
 
 #[cfg(test)]
-use std::iter::FromIterator;
-
-#[cfg(test)]
-use itertools::Itertools;
-
-use crate::gtest::{Status, TestResult};
+use {itertools::Itertools, std::iter::FromIterator};
 
 pub struct Parser<T> {
     testcase: Option<String>,

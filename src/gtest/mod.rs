@@ -1,16 +1,13 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
-use console::style;
-use crossbeam::channel;
-use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
-use rs_tracing::{trace_scoped, trace_scoped_internal};
-use std::cmp::min;
-use std::env;
-use std::fs::canonicalize;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::thread;
+use {
+    console::style,
+    crossbeam::channel,
+    indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle},
+    rs_tracing::{trace_scoped, trace_scoped_internal},
+    std::{cmp::min, env, fs::canonicalize, path::PathBuf, sync::Arc, thread},
+};
 
 mod exec;
 mod parse;

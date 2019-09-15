@@ -1,13 +1,15 @@
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
-use console::style;
-use rs_tracing::{
-    close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
-    trace_scoped_internal, trace_to_file_internal,
+use {
+    console::style,
+    rs_tracing::{
+        close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
+        trace_scoped_internal, trace_to_file_internal,
+    },
+    scopeguard::defer,
+    structopt::StructOpt,
 };
-use scopeguard::defer;
-use structopt::StructOpt;
 
 mod gtest;
 

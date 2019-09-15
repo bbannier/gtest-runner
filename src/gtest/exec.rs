@@ -1,15 +1,16 @@
-use crossbeam::Sender;
-use rs_tracing::{trace_begin, trace_duration_internal, trace_end};
-use std::collections::HashSet;
-use std::convert::Into;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-use std::thread;
-
-use super::parse;
-use super::Status;
-use super::TestResult;
+use {
+    crate::gtest::{parse, Status, TestResult},
+    crossbeam::Sender,
+    rs_tracing::{trace_begin, trace_duration_internal, trace_end},
+    std::{
+        collections::HashSet,
+        convert::Into,
+        io::{BufRead, BufReader},
+        path::PathBuf,
+        process::{Child, Command, Stdio},
+        thread,
+    },
+};
 
 pub fn get_tests<P: Into<PathBuf>>(
     test_executable: P,
