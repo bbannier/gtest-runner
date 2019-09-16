@@ -9,6 +9,9 @@ use {
     std::{cmp::min, env, fs::canonicalize, path::PathBuf, sync::Arc, thread},
 };
 
+#[cfg(test)]
+use std::path::Path;
+
 mod exec;
 mod parse;
 
@@ -267,18 +270,17 @@ pub fn run<P: Into<PathBuf>>(
     Ok(stats.num_failed())
 }
 
+#[cfg(test)]
+pub fn test_executable() -> PathBuf {
+    Path::new(env!("OUT_DIR")).join("dummy-gtest-executable")
+}
+
 #[test]
 fn test_run1() {
-    assert_eq!(
-        0,
-        run("target/debug/dummy-gtest-executable", None, 1, 0, 0).unwrap()
-    );
+    assert_eq!(0, run(test_executable(), None, 1, 0, 0).unwrap());
 }
 
 #[test]
 fn test_run2() {
-    assert_eq!(
-        0,
-        run("target/debug/dummy-gtest-executable", None, 2, 0, 0).unwrap()
-    );
+    assert_eq!(0, run(test_executable(), None, 2, 0, 0).unwrap());
 }

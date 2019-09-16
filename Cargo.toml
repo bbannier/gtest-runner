@@ -24,10 +24,8 @@ crossbeam = "0.7"
 structopt = "0.3"
 scopeguard = "1.0"
 
+[build-dependencies]
+structopt = "0.3"
+
 [dev-dependencies]
 itertools = "0.8"
-
-[[bin]]
-name = "dummy-gtest-executable"
-path = "tests/dummy_gtest_executable.rs"
-test = true

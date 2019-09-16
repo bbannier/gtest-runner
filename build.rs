@@ -1,4 +1,7 @@
-use structopt::StructOpt;
+use {
+    std::{env, fs, io, path::Path},
+    structopt::StructOpt,
+};
 
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "verbatim")]
@@ -14,10 +17,23 @@ struct GtestOpt {
 
     #[structopt(long)]
     gtest_list_tests: bool,
+
+    #[structopt(long, env = "OUT_DIR")]
+    out_dir: Option<String>,
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     let opt = GtestOpt::from_args();
+
+    if opt.out_dir.is_some() {
+        if let Some(name) = env::args().next() {
+            fs::copy(
+                &name,
+                Path::new(&opt.out_dir.unwrap()).join("dummy-gtest-executable"),
+            )
+            .unwrap();
+        }
+    }
 
     if opt.gtest_list_tests {
         println!(
@@ -25,7 +41,7 @@ fn main() {
   NOPE0
   NOPE1"#
         );
-        return;
+        return Ok(());
     }
 
     assert!(
@@ -64,4 +80,6 @@ fn main() {
             );
         }
     };
+
+    Ok(())
 }

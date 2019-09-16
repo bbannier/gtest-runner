@@ -12,6 +12,9 @@ use {
     },
 };
 
+#[cfg(test)]
+use crate::gtest::test_executable;
+
 pub fn get_tests<P: Into<PathBuf>>(
     test_executable: P,
     include_disabled_tests: bool,
@@ -57,7 +60,7 @@ pub fn get_tests<P: Into<PathBuf>>(
 
 #[test]
 fn test_get_tests() {
-    let tests = get_tests("target/debug/dummy-gtest-executable", false).unwrap();
+    let tests = get_tests(test_executable(), false).unwrap();
     assert_eq!(2, tests.len());
 }
 
