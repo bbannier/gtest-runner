@@ -1,5 +1,5 @@
 use {
-    crate::gtest::{parse, Status, TestResult},
+    crate::gtest::{parse, Event, Test},
     crossbeam::Sender,
     rs_tracing::{trace_begin, trace_duration_internal, trace_end},
     std::{
@@ -76,7 +76,7 @@ pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) 
 pub fn process_shard(
     shard: usize,
     child: Child,
-    sender: Sender<TestResult>,
+    sender: Sender<Test>,
     done: Sender<()>,
 ) -> Result<(thread::JoinHandle<()>), &'static str> {
     // TODO(bbannier): Process stdout as well.
@@ -94,18 +94,18 @@ pub fn process_shard(
             let mut t = t;
             t.shard = Some(shard);
 
-            sender.send(t.clone()).unwrap();
-
             // Update tracing.
-            match t.status {
-                Status::STARTING => {
+            match &t.event {
+                Event::Starting => {
                     trace_begin!(&t.testcase);
                 }
-                Status::OK | Status::FAILED | Status::ABORTED => {
+                Event::Running => {}
+                Event::Terminal { .. } => {
                     trace_end!(&t.testcase);
                 }
-                Status::RUNNING => {}
-            }
+            };
+
+            sender.send(t).unwrap();
         }
 
         // Signal that we are done processing this shard.

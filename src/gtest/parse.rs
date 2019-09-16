@@ -1,10 +1,13 @@
 use {
-    crate::gtest::{Status, TestResult},
+    crate::gtest::{Event, Status, Test},
     console::strip_ansi_codes,
 };
 
 #[cfg(test)]
-use {itertools::Itertools, std::iter::FromIterator};
+use {
+    itertools::{join, Itertools},
+    std::iter::FromIterator,
+};
 
 pub struct Parser<T> {
     testcase: Option<String>,
@@ -17,73 +20,77 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: String) -> Result<Option<TestResult>, String> {
-        let status = {
-            let line = strip_ansi_codes(&line);
+    fn parse(&mut self, line: String) -> Result<Option<Test>, String> {
+        let line = strip_ansi_codes(&line).to_string();
 
-            if self.ok.is_match(&line) {
-                Status::OK
-            } else if self.failed.is_match(&line) {
-                Status::FAILED
-            } else if self.starting.is_match(&line) {
-                Status::STARTING
-            } else {
-                Status::RUNNING
-            }
-        };
-
-        match status {
-            Status::STARTING => {
-                self.testcase = Some(String::from(
-                    strip_ansi_codes(&line).to_string()[12..]
-                        .split_whitespace()
-                        .next()
-                        .ok_or_else(|| {
-                            format!("Expected at least a single space in line: {}", &line)
-                        })?,
-                ));
-                self.log = vec![line];
-            }
-            _ => {
-                self.log.push(line);
-            }
-        };
-
-        match self.testcase {
-            // Do not report until we have found a test case.
-            None => Ok(None),
-
-            // Prepare a new test result.
-            Some(_) => {
-                let result = TestResult {
-                    testcase: self
-                        .testcase
-                        .clone()
-                        .ok_or("Expected a testcase to be set")?,
-                    log: self.log.clone(),
-                    status: status.clone(),
-                    shard: None,
-                };
-
-                // Unset the current test case for terminal transitions.
-                // This allows us to detect aborts.
-                if status.is_terminal() {
-                    self.testcase = None;
-                }
-
-                Ok(Some(result))
-            }
+        if self.testcase.is_some() {
+            self.log.push(line.clone());
         }
+
+        let mut result = None;
+
+        if self.ok.is_match(&line) {
+            result = Some(Test {
+                testcase: self.testcase.clone().unwrap(),
+                shard: None,
+                event: Event::Terminal {
+                    status: Status::OK,
+                    log: self.log.clone(),
+                },
+            });
+
+            self.testcase = None;
+            self.log.clear();
+        } else if self.failed.is_match(&line) {
+            result = Some(Test {
+                testcase: self.testcase.clone().unwrap(),
+                shard: None,
+                event: Event::Terminal {
+                    status: Status::FAILED,
+                    log: self.log.clone(),
+                },
+            });
+
+            self.testcase = None;
+            self.log.clear();
+        } else if self.starting.is_match(&line) {
+            self.testcase = Some(String::from(
+                strip_ansi_codes(&line).to_string()[12..]
+                    .split_whitespace()
+                    .next()
+                    .ok_or_else(|| {
+                        format!("Expected at least a single space in line: {}", &line)
+                    })?,
+            ));
+
+            result = Some(Test {
+                testcase: self.testcase.clone().unwrap(),
+                shard: None,
+                event: Event::Starting,
+            });
+
+            self.log = vec![line];
+        } else if self.testcase.is_some() {
+            result = Some(Test {
+                testcase: self.testcase.clone().unwrap(),
+                shard: None,
+                event: Event::Running,
+            });
+        };
+
+        Ok(result)
     }
 
-    fn finalize(&mut self) -> Option<TestResult> {
+    fn finalize(&mut self) -> Option<Test> {
         // If we still have a non-terminal test case at this point we aborted.
         if self.testcase.is_some() {
-            let result = TestResult {
+            let result = Test {
                 testcase: self.testcase.clone().unwrap(),
-                log: self.log.clone(),
-                status: Status::ABORTED,
                 shard: None,
+                event: Event::Terminal {
+                    status: Status::ABORTED,
+                    log: self.log.clone(),
+                },
             };
 
             self.testcase = None;
@@ -116,9 +123,9 @@ impl<T> Iterator for Parser<T>
 where
     T: Iterator<Item = String>,
 {
-    type Item = TestResult;
+    type Item = Test;
 
-    fn next(&mut self) -> Option<TestResult> {
+    fn next(&mut self) -> Option<Test> {
         match self.reader.next() {
             Some(line) => self.parse(line).ok()?.or_else(|| self.next()),
             None => self.finalize(),
@@ -172,7 +179,10 @@ PC: @     0x7fff617c3e3e __pthread_kill
         vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == Status::STARTING)
+                .filter(|result| match result.event {
+                    Event::Starting => true,
+                    _ => false,
+                })
                 .map(|result| result.testcase)
                 .dedup(),
         )
@@ -182,7 +192,10 @@ PC: @     0x7fff617c3e3e __pthread_kill
         vec!["NOPE.NOPE1"],
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == Status::OK)
+                .filter(|result| match &result.event {
+                    Event::Terminal { status, log: _ } => *status == Status::OK,
+                    _ => false,
+                })
                 .map(|result| result.testcase),
         )
     );
@@ -191,15 +204,20 @@ PC: @     0x7fff617c3e3e __pthread_kill
         vec!["NOPE.NOPE2"],
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
-                .filter(|result| result.status == Status::FAILED)
+                .filter(|result| match &result.event {
+                    Event::Terminal { status, log: _ } => *status == Status::FAILED,
+                    _ => false,
+                })
                 .map(|result| result.testcase),
         )
     );
 
-    let aborted = Vec::from_iter(
-        Parser::new(output.split('\n').map(String::from))
-            .filter(|result| result.status == Status::ABORTED),
-    );
+    let aborted = Vec::from_iter(Parser::new(output.split('\n').map(String::from)).filter(
+        |result| match &result.event {
+            Event::Terminal { status, log: _ } => *status == Status::ABORTED,
+            _ => false,
+        },
+    ));
     assert_eq!(1, aborted.len());
     assert_eq!(
         vec!["NOPE.NOPE3"],
@@ -236,6 +254,13 @@ PC: @     0x7fff617c3e3e __pthread_kill
     @        0x10deb7551 main
     @     0x7fff61674115 start
     @                0x2 (unknown)"#,
-        &aborted[0].log.iter().join("\n")
+        aborted
+            .iter()
+            .map(|result| match &result.event {
+                Event::Terminal { status: _, log } => join(log, "\n"),
+                _ => unreachable!(),
+            })
+            .next()
+            .unwrap()
     );
 }

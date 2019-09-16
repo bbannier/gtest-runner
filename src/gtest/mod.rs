@@ -14,35 +14,32 @@ mod parse;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
-    STARTING,
-    RUNNING,
     OK,
     FAILED,
     ABORTED,
 }
 
 impl Status {
-    pub fn is_terminal(&self) -> bool {
-        match self {
-            Status::STARTING | Status::RUNNING => false,
-            Status::ABORTED | Status::OK | Status::FAILED => true,
-        }
-    }
-
     pub fn is_failed(&self) -> bool {
         match self {
-            Status::STARTING | Status::RUNNING | Status::OK => false,
             Status::FAILED | Status::ABORTED => true,
+            Status::OK => false,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct TestResult {
-    pub testcase: String,
-    pub log: Vec<String>,
-    pub status: Status,
-    pub shard: Option<usize>,
+pub enum Event {
+    Starting,
+    Running,
+    Terminal { status: Status, log: Vec<String> },
+}
+
+#[derive(Debug, Clone)]
+pub struct Test {
+    event: Event,
+    testcase: String,
+    shard: Option<usize>,
 }
 
 /// Sharded execution of a gtest executable
@@ -145,7 +142,7 @@ pub fn run<P: Into<PathBuf>>(
 
     struct ShardStats {
         num_passed: usize,
-        failed_tests: Vec<TestResult>,
+        failed_tests: Vec<Test>,
     }
 
     impl ShardStats {
@@ -172,32 +169,31 @@ pub fn run<P: Into<PathBuf>>(
 
             progress_shard.inc(1);
 
-            if result.status.is_terminal() && verbosity > 2 {
-                for line in &result.log {
-                    println!("{}", line);
+            if let Event::Terminal { log, .. } = &result.event {
+                if verbosity > 2 {
+                    for line in log {
+                        println!("{}", line);
+                    }
                 }
             }
 
-            match result.status {
-                Status::STARTING => {
+            match &result.event {
+                Event::Starting => {
                     progress_shard.set_message(&result.testcase);
                 }
-                Status::OK => {
-                    progress_global.inc(1);
-                }
-                Status::FAILED | Status::ABORTED => {
-                    progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
+                Event::Running => {}
+                Event::Terminal { status, .. } => {
                     progress_global.inc(1);
 
-                    stats.failed_tests.push(result.clone());
-                }
-                Status::RUNNING => {}
-            }
+                    if status.is_failed() {
+                        progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
 
-            // Update statistics.
-            if result.status.is_terminal() && !result.status.is_failed() {
-                stats.num_passed += 1;
-            }
+                        stats.failed_tests.push(result.clone());
+                    } else {
+                        stats.num_passed += 1;
+                    }
+                }
+            };
 
             // Check if any shards can be cleaned up.
             if let Ok(index) = sel.try_ready() {
@@ -230,8 +226,12 @@ pub fn run<P: Into<PathBuf>>(
     } else {
         if verbosity <= 2 {
             for test in &stats.failed_tests {
-                for line in &test.log {
-                    println!("{}", line);
+                if let Event::Terminal { status, log } = &test.event {
+                    if status.is_failed() {
+                        for line in log {
+                            println!("{}", line);
+                        }
+                    }
                 }
             }
         }
