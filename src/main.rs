@@ -7,7 +7,6 @@ use {
         close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
         trace_scoped_internal, trace_to_file_internal,
     },
-    scopeguard::defer,
     structopt::StructOpt,
 };
 
@@ -76,7 +75,6 @@ fn main() -> Result<(), String> {
 
     if opt.trace {
         open_trace_file!(".").unwrap();
-        defer! {{close_trace_file!();}};
     }
 
     let mut ret_vec = Vec::new();
@@ -93,6 +91,8 @@ fn main() -> Result<(), String> {
             opt.repeat,
         )?);
     }
+
+    close_trace_file!();
 
     std::process::exit(ret_vec.iter().sum::<usize>() as i32);
 }
