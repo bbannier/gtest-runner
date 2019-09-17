@@ -67,6 +67,7 @@ struct Opt {
     /// parallel they likely should not depend on system information (e.g., the ability to bind to
     /// fixed ports; the presence or absence of especially test-created files in fixed file system
     /// locations, etc.).
+    #[structopt(required = true)]
     test_executables: Vec<String>,
 }
 
