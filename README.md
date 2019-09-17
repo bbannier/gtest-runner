@@ -18,15 +18,23 @@ Usage
 
 
 ```
-gtest-runner 0.0.16
+gtest-runner 0.0.18
 
 USAGE:
-    gtest-runner [OPTIONS] [test-executables]...
+    gtest-runner [FLAGS] [OPTIONS] <test-executables>...
 
 FLAGS:
     -h, --help
             Prints help information
 
+    -t, --trace
+            Dump chrome://tracing trace to current directory
+
+            If this flag is present a chrome://tracing execution trace (http://dev.chromium.org/developers/how-
+            tos/trace-event-profiling-tool) will be dumped to the current
+            directory as `<pid>.trace` which can be used to analyze e.g., temporal relations between tests or their
+            duration. The resulting file can e.g., directly be loaded into Google Chrome under chrome://tracing, or
+            converted to HTML with `trace2html`.
     -V, --version
             Prints version information
 
@@ -47,14 +55,6 @@ OPTIONS:
 
             If this flag is given a non-zero value, failed tests will be repeated up to `repeat` times. [env:
             GTEST_RUNNER_REPEAT=]  [default: 0]
-    -t, --trace <trace>
-            Dump chrome://tracing trace to current directory
-
-            If this flag is present a chrome://tracing execution trace (http://dev.chromium.org/developers/how-
-            tos/trace-event-profiling-tool) will be dumped to the current
-            directory as `<pid>.trace` which can be used to analyze e.g., temporal relations between tests or their
-            duration. The resulting file can e.g., directly be loaded into Google Chrome under chrome://tracing, or
-            converted to HTML with `trace2html`. [env: GTEST_RUNNER_TRACE=]
     -v, --verbosity <verbosity>
             Runner verbosity
 
