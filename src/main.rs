@@ -12,8 +12,8 @@ use {
 
 mod gtest;
 
-#[derive(StructOpt, Debug)]
-struct Opt {
+#[derive(StructOpt, Debug, Default)]
+pub struct Opt {
     /// Number of parallel jobs
     ///
     /// This flag controls how many parallel jobs are used to execute test shards. We do not
@@ -70,9 +70,7 @@ struct Opt {
     test_executables: Vec<String>,
 }
 
-fn main() -> Result<(), String> {
-    let opt = Opt::from_args();
-
+pub fn exec(opt: Opt) -> Result<i32, String> {
     if opt.trace {
         open_trace_file!(".").unwrap();
     }
@@ -94,5 +92,55 @@ fn main() -> Result<(), String> {
 
     close_trace_file!();
 
-    std::process::exit(ret_vec.iter().sum::<usize>() as i32);
+    Ok(ret_vec.iter().sum::<usize>() as i32)
+}
+
+#[test]
+fn test_trace() {
+    let opt = Opt {
+        trace: true,
+        test_executables: vec![gtest::test_executable().to_str().unwrap().to_string()],
+        ..Default::default()
+    };
+
+    let cwd = std::env::current_dir().expect("Could not get current directory");
+
+    let get_traces = |dir: &std::path::PathBuf| -> std::collections::HashSet<_> {
+        std::fs::read_dir(&dir)
+            .expect("Could not list directory")
+            .map(|entry| entry.expect("Could not get directory entry").path())
+            .filter(|path| {
+                std::path::Path::new(&path)
+                    .extension()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .and_then(|ext| Some(ext == "trace"))
+                    .is_some()
+            })
+            .collect()
+    };
+
+    let traces1 = get_traces(&cwd);
+    exec(opt).expect("Could not execute test executable");
+    let traces2 = get_traces(&cwd);
+
+    let traces = traces2.difference(&traces1).into_iter().collect::<Vec<_>>();
+    assert_eq!(
+        traces.len(),
+        1,
+        "Expected exactly one trace file to be created"
+    );
+
+    let trace = traces[0];
+    let size = trace
+        .metadata()
+        .expect("Could not get trace metadata")
+        .len();
+    assert!(size > 100, "Unexpected of small size of trace file");
+    std::fs::remove_file(trace).expect("Could not remove test trace");
+}
+
+fn main() -> Result<(), String> {
+    let opt = Opt::from_args();
+
+    std::process::exit(exec(opt)?);
 }

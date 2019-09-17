@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
     let opt = GtestOpt::from_args();
 
     if opt.out_dir.is_some() {
-        if let Some(name) = env::args().next() {
+        if let Ok(name) = env::current_exe() {
             fs::copy(
                 &name,
                 Path::new(&opt.out_dir.unwrap()).join("dummy-gtest-executable"),
