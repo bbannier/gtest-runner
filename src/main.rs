@@ -48,7 +48,10 @@ struct Opt {
     /// the current directory as `<pid>.trace` which can be used to analyze e.g., temporal
     /// relations between tests or their duration. The resulting file can e.g., directly be loaded
     /// into Google Chrome under chrome://tracing, or converted to HTML with `trace2html`.
-    #[structopt(long, short, env = "GTEST_RUNNER_TRACE")]
+    // We explicitly do not declare `env` for this flag as clap implicitly sets
+    // `Arg::takes_value(true)` which turns this from a flag to an option, see
+    // https://github.com/TeXitoi/structopt/issues/176.
+    #[structopt(long, short)]
     trace: bool,
 
     /// Repeat failed tests
