@@ -70,9 +70,9 @@ impl<T> Parser<T> {
             });
 
             self.log = vec![line];
-        } else if self.testcase.is_some() {
+        } else if let Some(testcase) = &self.testcase {
             result = Some(Test {
-                testcase: self.testcase.clone().unwrap(),
+                testcase: testcase.clone(),
                 shard: None,
                 event: Event::Running,
             });
@@ -83,9 +83,9 @@ impl<T> Parser<T> {
 
     fn finalize(&mut self) -> Option<Test> {
         // If we still have a non-terminal test case at this point we aborted.
-        if self.testcase.is_some() {
+        if let Some(testcase) = &self.testcase {
             let result = Test {
-                testcase: self.testcase.clone().unwrap(),
+                testcase: testcase.clone(),
                 shard: None,
                 event: Event::Terminal {
                     status: Status::ABORTED,
