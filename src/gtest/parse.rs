@@ -1,5 +1,8 @@
 use {
-    crate::gtest::{Event, Status, Test},
+    crate::{
+        gtest,
+        gtest::{Event, Status},
+    },
     console::strip_ansi_codes,
 };
 
@@ -9,9 +12,14 @@ use {
     std::iter::FromIterator,
 };
 
-pub struct Parser<T> {
-    testcase: Option<String>,
+#[derive(Clone)]
+struct Test {
+    case: String,
     log: Vec<String>,
+}
+
+pub struct Parser<T> {
+    test: Option<Test>,
     reader: T,
 
     starting: regex::Regex,
@@ -20,59 +28,61 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: String) -> Result<Option<Test>, String> {
+    fn parse(&mut self, line: String) -> Result<Option<gtest::Test>, String> {
         let line = strip_ansi_codes(&line).to_string();
 
-        if self.testcase.is_some() {
-            self.log.push(line.clone());
+        if let Some(test) = &mut self.test {
+            test.log.push(line.clone());
         }
 
         let mut result = None;
 
         if self.ok.is_match(&line) {
-            result = Some(Test {
-                testcase: self.testcase.clone().unwrap(),
+            let test = self.test.clone().unwrap();
+            result = Some(gtest::Test {
+                testcase: test.case,
                 shard: None,
                 event: Event::Terminal {
                     status: Status::OK,
-                    log: self.log.clone(),
+                    log: test.log,
                 },
             });
 
-            self.testcase = None;
-            self.log.clear();
+            self.test = None;
         } else if self.failed.is_match(&line) {
-            result = Some(Test {
-                testcase: self.testcase.clone().unwrap(),
+            let test = self.test.clone().unwrap();
+            result = Some(gtest::Test {
+                testcase: test.case,
                 shard: None,
                 event: Event::Terminal {
                     status: Status::FAILED,
-                    log: self.log.clone(),
+                    log: test.log,
                 },
             });
 
-            self.testcase = None;
-            self.log.clear();
+            self.test = None;
         } else if self.starting.is_match(&line) {
-            self.testcase = Some(String::from(
+            let case = String::from(
                 strip_ansi_codes(&line).to_string()[12..]
                     .split_whitespace()
                     .next()
                     .ok_or_else(|| {
                         format!("Expected at least a single space in line: {}", &line)
                     })?,
-            ));
+            );
+            self.test = Some(Test {
+                case: case.clone(),
+                log: vec![line],
+            });
 
-            result = Some(Test {
-                testcase: self.testcase.clone().unwrap(),
+            result = Some(gtest::Test {
+                testcase: case,
                 shard: None,
                 event: Event::Starting,
             });
-
-            self.log = vec![line];
-        } else if let Some(testcase) = &self.testcase {
-            result = Some(Test {
-                testcase: testcase.clone(),
+        } else if let Some(test) = &self.test {
+            result = Some(gtest::Test {
+                testcase: test.case.clone(),
                 shard: None,
                 event: Event::Running,
             });
@@ -81,19 +91,19 @@ impl<T> Parser<T> {
         Ok(result)
     }
 
-    fn finalize(&mut self) -> Option<Test> {
+    fn finalize(&mut self) -> Option<gtest::Test> {
         // If we still have a non-terminal test case at this point we aborted.
-        if let Some(testcase) = &self.testcase {
-            let result = Test {
-                testcase: testcase.clone(),
+        if let Some(test) = &self.test {
+            let result = gtest::Test {
+                testcase: test.case.clone(),
                 shard: None,
                 event: Event::Terminal {
                     status: Status::ABORTED,
-                    log: self.log.clone(),
+                    log: test.log.clone(),
                 },
             };
 
-            self.testcase = None;
+            self.test = None;
 
             return Some(result);
         }
@@ -108,8 +118,7 @@ where
 {
     pub fn new(reader: T) -> Parser<T> {
         Parser {
-            testcase: None,
-            log: vec![],
+            test: None,
             reader,
 
             starting: regex::Regex::new(r"^\[ RUN      \] .*").unwrap(),
@@ -123,9 +132,9 @@ impl<T> Iterator for Parser<T>
 where
     T: Iterator<Item = String>,
 {
-    type Item = Test;
+    type Item = gtest::Test;
 
-    fn next(&mut self) -> Option<Test> {
+    fn next(&mut self) -> Option<gtest::Test> {
         match self.reader.next() {
             Some(line) => self.parse(line).ok()?.or_else(|| self.next()),
             None => self.finalize(),
