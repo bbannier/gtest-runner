@@ -37,30 +37,37 @@ impl<T> Parser<T> {
 
         let mut result = None;
 
-        if self.ok.is_match(&line) {
-            let test = self.test.clone().unwrap();
-            result = Some(gtest::Test {
-                testcase: test.case,
-                shard: None,
-                event: Event::Terminal {
-                    status: Status::OK,
-                    log: test.log,
-                },
-            });
+        if let Some(test) = &self.test {
+            let test = test.clone();
+            if self.ok.is_match(&line) {
+                result = Some(gtest::Test {
+                    testcase: test.case,
+                    shard: None,
+                    event: Event::Terminal {
+                        status: Status::OK,
+                        log: test.log,
+                    },
+                });
 
-            self.test = None;
-        } else if self.failed.is_match(&line) {
-            let test = self.test.clone().unwrap();
-            result = Some(gtest::Test {
-                testcase: test.case,
-                shard: None,
-                event: Event::Terminal {
-                    status: Status::FAILED,
-                    log: test.log,
-                },
-            });
+                self.test = None;
+            } else if self.failed.is_match(&line) {
+                result = Some(gtest::Test {
+                    testcase: test.case,
+                    shard: None,
+                    event: Event::Terminal {
+                        status: Status::FAILED,
+                        log: test.log,
+                    },
+                });
 
-            self.test = None;
+                self.test = None;
+            } else {
+                result = Some(gtest::Test {
+                    testcase: test.case,
+                    shard: None,
+                    event: Event::Running,
+                });
+            }
         } else if self.starting.is_match(&line) {
             let case = String::from(
                 strip_ansi_codes(&line).to_string()[12..]
@@ -79,12 +86,6 @@ impl<T> Parser<T> {
                 testcase: case,
                 shard: None,
                 event: Event::Starting,
-            });
-        } else if let Some(test) = &self.test {
-            result = Some(gtest::Test {
-                testcase: test.case.clone(),
-                shard: None,
-                event: Event::Running,
             });
         };
 

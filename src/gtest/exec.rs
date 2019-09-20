@@ -60,8 +60,8 @@ pub fn get_tests<P: Into<PathBuf>>(
 
 #[test]
 fn test_get_tests() {
-    let tests = get_tests(test_executable(), false).unwrap();
-    assert_eq!(2, tests.len());
+    let num_tests = get_tests(test_executable(), false).map(|xs| xs.len());
+    assert_eq!(Ok(2), num_tests);
 }
 
 pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {

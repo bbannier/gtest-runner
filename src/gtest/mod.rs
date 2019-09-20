@@ -277,10 +277,10 @@ pub fn test_executable() -> PathBuf {
 
 #[test]
 fn test_run1() {
-    assert_eq!(0, run(test_executable(), None, 1, 0, 0).unwrap());
+    assert_eq!(Ok(0), run(test_executable(), None, 1, 0, 0));
 }
 
 #[test]
 fn test_run2() {
-    assert_eq!(0, run(test_executable(), None, 2, 0, 0).unwrap());
+    assert_eq!(Ok(0), run(test_executable(), None, 2, 0, 0));
 }
