@@ -113,7 +113,7 @@ fn test_trace() {
                 std::path::Path::new(&path)
                     .extension()
                     .and_then(std::ffi::OsStr::to_str)
-                    .and_then(|ext| Some(ext == "trace"))
+                    .map(|ext| ext == "trace")
                     .is_some()
             })
             .collect()
@@ -123,7 +123,7 @@ fn test_trace() {
     exec(opt).expect("Could not execute test executable");
     let traces2 = get_traces(&cwd);
 
-    let traces = traces2.difference(&traces1).into_iter().collect::<Vec<_>>();
+    let traces = traces2.difference(&traces1).collect::<Vec<_>>();
     assert_eq!(
         traces.len(),
         1,

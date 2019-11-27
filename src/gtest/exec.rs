@@ -81,7 +81,7 @@ pub fn process_shard(
     child: Child,
     sender: Sender<Test>,
     done: Sender<()>,
-) -> Result<(thread::JoinHandle<()>), &'static str> {
+) -> Result<thread::JoinHandle<()>, &'static str> {
     // TODO(bbannier): Process stdout as well.
     let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
 

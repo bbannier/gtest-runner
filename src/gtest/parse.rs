@@ -203,7 +203,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
                 .filter(|result| match &result.event {
-                    Event::Terminal { status, log: _ } => *status == Status::OK,
+                    Event::Terminal { status, .. } => *status == Status::OK,
                     _ => false,
                 })
                 .map(|result| result.testcase),
@@ -215,7 +215,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
                 .filter(|result| match &result.event {
-                    Event::Terminal { status, log: _ } => *status == Status::FAILED,
+                    Event::Terminal { status, .. } => *status == Status::FAILED,
                     _ => false,
                 })
                 .map(|result| result.testcase),
@@ -224,7 +224,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
 
     let aborted = Vec::from_iter(Parser::new(output.split('\n').map(String::from)).filter(
         |result| match &result.event {
-            Event::Terminal { status, log: _ } => *status == Status::ABORTED,
+            Event::Terminal { status, .. } => *status == Status::ABORTED,
             _ => false,
         },
     ));
@@ -267,7 +267,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         aborted
             .iter()
             .map(|result| match &result.event {
-                Event::Terminal { status: _, log } => join(log, "\n"),
+                Event::Terminal { log, .. } => join(log, "\n"),
                 _ => unreachable!(),
             })
             .next()
