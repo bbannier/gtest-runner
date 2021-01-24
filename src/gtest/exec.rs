@@ -1,6 +1,6 @@
 use {
     crate::gtest::{parse, Event, Test},
-    crossbeam::Sender,
+    crossbeam::channel::Sender,
     rs_tracing::{trace_begin, trace_duration_internal, trace_end},
     std::{
         collections::HashSet,
