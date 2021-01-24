@@ -7,6 +7,7 @@ use {
         close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
         trace_scoped_internal, trace_to_file_internal,
     },
+    std::convert::TryFrom,
     structopt::StructOpt,
 };
 
@@ -70,7 +71,7 @@ pub struct Opt {
     test_executables: Vec<String>,
 }
 
-pub fn exec(opt: Opt) -> Result<i32, String> {
+pub fn exec(opt: &Opt) -> Result<i32, String> {
     if opt.trace {
         open_trace_file!(".").unwrap();
     }
@@ -92,7 +93,7 @@ pub fn exec(opt: Opt) -> Result<i32, String> {
 
     close_trace_file!();
 
-    Ok(ret_vec.iter().sum::<usize>() as i32)
+    Ok(i32::try_from(ret_vec.iter().sum::<usize>()).map_err(|e| e.to_string())?)
 }
 
 #[test]
@@ -120,7 +121,7 @@ fn test_trace() {
     };
 
     let traces1 = get_traces(&cwd);
-    exec(opt).expect("Could not execute test executable");
+    exec(&opt).expect("Could not execute test executable");
     let traces2 = get_traces(&cwd);
 
     let traces = traces2.difference(&traces1).collect::<Vec<_>>();
@@ -142,5 +143,5 @@ fn test_trace() {
 fn main() -> Result<(), String> {
     let opt = Opt::from_args();
 
-    std::process::exit(exec(opt)?);
+    std::process::exit(exec(&opt)?);
 }

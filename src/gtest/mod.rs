@@ -45,6 +45,17 @@ pub struct Test {
     shard: Option<usize>,
 }
 
+struct ShardStats {
+    num_passed: usize,
+    failed_tests: Vec<Test>,
+}
+
+impl ShardStats {
+    fn num_failed(&self) -> usize {
+        self.failed_tests.len()
+    }
+}
+
 /// Sharded execution of a gtest executable
 ///
 /// This function takes the path to a gtest executable and number
@@ -96,7 +107,7 @@ pub fn run<P: Into<PathBuf>>(
 
     // Run tests.
     let m = MultiProgress::new();
-    if verbosity < 1 || verbosity > 2 {
+    if !(1..=2).contains(&verbosity) {
         m.set_draw_target(ProgressDrawTarget::hidden());
     }
 
@@ -113,46 +124,35 @@ pub fn run<P: Into<PathBuf>>(
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
     let (sender, receiver) = channel::unbounded();
-    let mut dones = vec![];
+    let mut done_receivers = vec![];
 
     let mut progress_shards = vec![];
 
     // Execute the shards.
     for job in 0..jobs {
-        let (done1, done2) = channel::unbounded();
-        dones.push(done2);
+        let (done_sender, done_receiver) = channel::unbounded();
+        done_receivers.push(done_receiver);
 
         let cmd = exec::cmd(&test_executable, job, jobs)
             .spawn()
             .map_err(|e| e.to_string())?;
 
-        let progress_shard = if verbosity != 2 {
-            ProgressBar::hidden()
-        } else {
+        let progress_shard = if verbosity == 2 {
             m.add(ProgressBar::new(100))
+        } else {
+            ProgressBar::hidden()
         };
         progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
 
         progress_shards.push(progress_shard);
 
-        exec::process_shard(job, cmd, sender.clone(), done1)?;
+        exec::process_shard(job, cmd, sender.clone(), done_sender)?;
     }
 
     // Close the sender in this thread.
     drop(sender);
 
     //////////////////////////////////////////
-
-    struct ShardStats {
-        num_passed: usize,
-        failed_tests: Vec<Test>,
-    }
-
-    impl ShardStats {
-        fn num_failed(&self) -> usize {
-            self.failed_tests.len()
-        }
-    }
 
     // Report successes or failures globally.
     let reporter = thread::spawn(move || {
@@ -162,7 +162,7 @@ pub fn run<P: Into<PathBuf>>(
         };
 
         let mut sel = channel::Select::new();
-        for done in &dones {
+        for done in &done_receivers {
             sel.recv(done);
         }
 

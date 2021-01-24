@@ -34,9 +34,7 @@ pub fn get_tests<P: Into<PathBuf>>(
 
     let mut current_test: Option<&str> = None;
     for line in output.lines() {
-        if !line.starts_with(' ') {
-            current_test = line.split_whitespace().next();
-        } else {
+        if line.starts_with(' ') {
             let case = &line
                 .split_whitespace()
                 .next()
@@ -52,6 +50,8 @@ pub fn get_tests<P: Into<PathBuf>>(
             }
 
             tests.insert(test);
+        } else {
+            current_test = line.split_whitespace().next();
         }
     }
 

@@ -28,7 +28,7 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: String) -> Result<Option<gtest::Test>, String> {
+    fn parse(&mut self, line: &str) -> Result<Option<gtest::Test>, String> {
         let line = strip_ansi_codes(&line).to_string();
 
         if let Some(test) = &mut self.test {
@@ -137,7 +137,7 @@ where
 
     fn next(&mut self) -> Option<gtest::Test> {
         match self.reader.next() {
-            Some(line) => self.parse(line).ok()?.or_else(|| self.next()),
+            Some(line) => self.parse(&line).ok()?.or_else(|| self.next()),
             None => self.finalize(),
         }
     }
