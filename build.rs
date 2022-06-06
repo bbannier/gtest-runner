@@ -6,9 +6,6 @@ use {
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "verbatim")]
 struct GtestOpt {
-    #[structopt(long)]
-    gtest_filter: Option<String>,
-
     #[structopt(long, default_value = "0", env = "GTEST_SHARD_INDEX")]
     gtest_shard_index: usize,
 

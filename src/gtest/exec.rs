@@ -90,7 +90,7 @@ pub fn process_shard(
     Ok(thread::spawn(move || {
         let lines = reader.lines().map(|line| match line {
             Ok(line) => line,
-            Err(err) => panic!(err),
+            Err(err) => panic!("{}", err),
         });
 
         for t in parse::Parser::new(lines) {
