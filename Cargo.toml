@@ -17,7 +17,7 @@ path = "src/main.rs"
 console = "0.14"
 indicatif = "0.15"
 num_cpus = "1.9"
-regex = "1.1"
+regex = "1.5"
 rs_tracing = { version = "1.0", features = ["rs_tracing"] }
 crossbeam = "0.8"
 structopt = "0.3"
