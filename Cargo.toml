@@ -14,7 +14,7 @@ name = "gtest-runner"
 path = "src/main.rs"
 
 [dependencies]
-console = "0.14"
+console = "0.15"
 indicatif = "0.15"
 num_cpus = "1.9"
 regex = "1.1"
