@@ -17,16 +17,16 @@ mod parse;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
-    OK,
-    FAILED,
-    ABORTED,
+    Ok,
+    Failed,
+    Aborted,
 }
 
 impl Status {
     pub fn is_failed(&self) -> bool {
         match self {
-            Status::FAILED | Status::ABORTED => true,
-            Status::OK => false,
+            Status::Failed | Status::Aborted => true,
+            Status::Ok => false,
         }
     }
 }

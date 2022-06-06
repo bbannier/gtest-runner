@@ -81,7 +81,7 @@ pub fn exec(opt: &Opt) -> Result<i32, String> {
         if opt.test_executables.len() > 1 && opt.verbosity > 0 {
             println!("{}", style(format!("Running {}", exe)).bold());
         }
-        trace_scoped!(&exe);
+        trace_scoped!(exe);
         ret_vec.push(gtest::run(
             exe,
             None,
@@ -93,7 +93,7 @@ pub fn exec(opt: &Opt) -> Result<i32, String> {
 
     close_trace_file!();
 
-    Ok(i32::try_from(ret_vec.iter().sum::<usize>()).map_err(|e| e.to_string())?)
+    i32::try_from(ret_vec.iter().sum::<usize>()).map_err(|e| e.to_string())
 }
 
 #[test]

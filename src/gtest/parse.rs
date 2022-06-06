@@ -29,7 +29,7 @@ pub struct Parser<T> {
 
 impl<T> Parser<T> {
     fn parse(&mut self, line: &str) -> Result<Option<gtest::Test>, String> {
-        let line = strip_ansi_codes(&line).to_string();
+        let line = strip_ansi_codes(line).to_string();
 
         if let Some(test) = &mut self.test {
             test.log.push(line.clone());
@@ -44,7 +44,7 @@ impl<T> Parser<T> {
                     testcase: test.case,
                     shard: None,
                     event: Event::Terminal {
-                        status: Status::OK,
+                        status: Status::Ok,
                         log: test.log,
                     },
                 });
@@ -55,7 +55,7 @@ impl<T> Parser<T> {
                     testcase: test.case,
                     shard: None,
                     event: Event::Terminal {
-                        status: Status::FAILED,
+                        status: Status::Failed,
                         log: test.log,
                     },
                 });
@@ -99,7 +99,7 @@ impl<T> Parser<T> {
                 testcase: test.case.clone(),
                 shard: None,
                 event: Event::Terminal {
-                    status: Status::ABORTED,
+                    status: Status::Aborted,
                     log: test.log.clone(),
                 },
             };
@@ -203,7 +203,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
                 .filter(|result| match &result.event {
-                    Event::Terminal { status, .. } => *status == Status::OK,
+                    Event::Terminal { status, .. } => *status == Status::Ok,
                     _ => false,
                 })
                 .map(|result| result.testcase),
@@ -215,7 +215,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
                 .filter(|result| match &result.event {
-                    Event::Terminal { status, .. } => *status == Status::FAILED,
+                    Event::Terminal { status, .. } => *status == Status::Failed,
                     _ => false,
                 })
                 .map(|result| result.testcase),
@@ -224,7 +224,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
 
     let aborted = Vec::from_iter(Parser::new(output.split('\n').map(String::from)).filter(
         |result| match &result.event {
-            Event::Terminal { status, .. } => *status == Status::ABORTED,
+            Event::Terminal { status, .. } => *status == Status::Aborted,
             _ => false,
         },
     ));
