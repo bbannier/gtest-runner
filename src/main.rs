@@ -2,6 +2,7 @@
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
 use {
+    anyhow::{anyhow, Result},
     console::style,
     rs_tracing::{
         close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
@@ -71,7 +72,7 @@ pub struct Opt {
     test_executables: Vec<String>,
 }
 
-pub fn exec(opt: &Opt) -> Result<i32, String> {
+pub fn exec(opt: &Opt) -> Result<i32> {
     if opt.trace {
         open_trace_file!(".").unwrap();
     }
@@ -93,7 +94,7 @@ pub fn exec(opt: &Opt) -> Result<i32, String> {
 
     close_trace_file!();
 
-    i32::try_from(ret_vec.iter().sum::<usize>()).map_err(|e| e.to_string())
+    i32::try_from(ret_vec.iter().sum::<usize>()).map_err(|e| anyhow!(e.to_string()))
 }
 
 #[test]
@@ -140,7 +141,7 @@ fn test_trace() {
     std::fs::remove_file(trace).expect("Could not remove test trace");
 }
 
-fn main() -> Result<(), String> {
+fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     std::process::exit(exec(&opt)?);

@@ -1,5 +1,6 @@
 use {
     crate::gtest::{parse, Event, Test},
+    anyhow::{anyhow, Result},
     crossbeam::channel::Sender,
     rs_tracing::{trace_begin, trace_duration_internal, trace_end},
     std::{
@@ -18,14 +19,14 @@ use crate::gtest::test_executable;
 pub fn get_tests<P: Into<PathBuf>>(
     test_executable: P,
     include_disabled_tests: bool,
-) -> Result<HashSet<String>, String> {
+) -> Result<HashSet<String>> {
     let result = Command::new(test_executable.into())
         .args(&["--gtest_list_tests"])
         .output()
         .expect("Failed to execute process");
 
     if !result.status.success() {
-        return Err("Failed to run program".to_owned());
+        return Err(anyhow!("Failed to run program"));
     }
 
     let output = String::from_utf8_lossy(&result.stdout);
@@ -38,7 +39,7 @@ pub fn get_tests<P: Into<PathBuf>>(
             let case = &line
                 .split_whitespace()
                 .next()
-                .ok_or_else(|| format!("Expected test case on line: {}", &line))?;
+                .ok_or_else(|| anyhow!("Expected test case on line: {}", &line))?;
 
             let test = match current_test {
                 Some(t) => [t, case].concat(),
@@ -61,7 +62,7 @@ pub fn get_tests<P: Into<PathBuf>>(
 #[test]
 fn test_get_tests() {
     let num_tests = get_tests(test_executable(), false).map(|xs| xs.len());
-    assert_eq!(Ok(2), num_tests);
+    assert_eq!(2, num_tests.unwrap());
 }
 
 pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
@@ -81,9 +82,13 @@ pub fn process_shard(
     child: Child,
     sender: Sender<Test>,
     done: Sender<()>,
-) -> Result<thread::JoinHandle<()>, &'static str> {
+) -> Result<thread::JoinHandle<()>> {
     // TODO(bbannier): Process stdout as well.
-    let reader = BufReader::new(child.stdout.ok_or("Child process has not stdout")?);
+    let reader = BufReader::new(
+        child
+            .stdout
+            .ok_or_else(|| anyhow!("Child process has not stdout"))?,
+    );
 
     // The output is processed on a separate thread to not block the main
     // thread while we wait for output.

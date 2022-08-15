@@ -3,6 +3,7 @@ use {
         gtest,
         gtest::{Event, Status},
     },
+    anyhow::{anyhow, Result},
     console::strip_ansi_codes,
 };
 
@@ -28,7 +29,7 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: &str) -> Result<Option<gtest::Test>, String> {
+    fn parse(&mut self, line: &str) -> Result<Option<gtest::Test>> {
         let line = strip_ansi_codes(line).to_string();
 
         if let Some(test) = &mut self.test {
@@ -74,7 +75,7 @@ impl<T> Parser<T> {
                     .split_whitespace()
                     .next()
                     .ok_or_else(|| {
-                        format!("Expected at least a single space in line: {}", &line)
+                        anyhow!("Expected at least a single space in line: {}", &line)
                     })?,
             );
             self.test = Some(Test {

@@ -2,6 +2,7 @@
 #![cfg_attr(feature = "clippy", plugin(clippy))]
 
 use {
+    anyhow::Result,
     console::style,
     crossbeam::channel,
     indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle},
@@ -68,10 +69,10 @@ pub fn run<P: Into<PathBuf>>(
     jobs: usize,
     verbosity: u64,
     repeat: u64,
-) -> Result<usize, String> {
+) -> Result<usize> {
     // We normalize the test executable path to decouple us from `Command::new` lookup semantics
     // and get the same results for when given `test-exe`, `./test-exe`, or `/path/to/test-exe`.
-    let test_executable = canonicalize(test_executable.into()).map_err(|e| e.to_string())?;
+    let test_executable = canonicalize(test_executable.into())?;
 
     if let Some(filter) = gtest_filter {
         env::set_var("GTEST_FILTER", filter);
@@ -95,11 +96,7 @@ pub fn run<P: Into<PathBuf>>(
             pb.set_draw_target(ProgressDrawTarget::hidden());
         }
 
-        pb.set_style(
-            ProgressStyle::default_spinner()
-                .template("{msg}")
-                .map_err(|e| format!("{}", e))?,
-        );
+        pb.set_style(ProgressStyle::default_spinner().template("{msg}")?);
         pb.set_message("Determining number of tests ...");
         let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
         pb.finish_and_clear();
@@ -119,8 +116,7 @@ pub fn run<P: Into<PathBuf>>(
     let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
     progress_global.set_style(
         ProgressStyle::default_spinner()
-            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}")
-            .map_err(|e| format!("{}", e))?,
+            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}")?,
     );
     progress_global.set_message("Running tests ...");
 
@@ -139,20 +135,15 @@ pub fn run<P: Into<PathBuf>>(
         let (done_sender, done_receiver) = channel::unbounded();
         done_receivers.push(done_receiver);
 
-        let cmd = exec::cmd(&test_executable, job, jobs)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        let cmd = exec::cmd(&test_executable, job, jobs).spawn()?;
 
         let progress_shard = if verbosity == 2 {
             m.add(ProgressBar::new(100))
         } else {
             ProgressBar::hidden()
         };
-        progress_shard.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner} {wide_msg}")
-                .map_err(|e| format!("{}", e))?,
-        );
+        progress_shard
+            .set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}")?);
 
         progress_shards.push(progress_shard);
 
@@ -222,7 +213,7 @@ pub fn run<P: Into<PathBuf>>(
     });
 
     // This implicitly joins the waiter thread.
-    m.clear().map_err(|e| e.to_string())?;
+    m.clear()?;
 
     // If we log only failures wait until all shards have finished processing.
     if verbosity < 3 {
@@ -287,10 +278,10 @@ pub fn test_executable() -> PathBuf {
 
 #[test]
 fn test_run1() {
-    assert_eq!(Ok(0), run(test_executable(), None, 1, 0, 0));
+    assert_eq!(0, run(test_executable(), None, 1, 0, 0).unwrap());
 }
 
 #[test]
 fn test_run2() {
-    assert_eq!(Ok(0), run(test_executable(), None, 2, 0, 0));
+    assert_eq!(0, run(test_executable(), None, 2, 0, 0).unwrap());
 }

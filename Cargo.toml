@@ -21,6 +21,7 @@ regex = "1.6"
 rs_tracing = { version = "1.0", features = ["rs_tracing"] }
 crossbeam = "0.8"
 structopt = "0.3"
+anyhow = "1.0.61"
 
 [build-dependencies]
 structopt = "0.3"
