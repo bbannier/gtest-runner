@@ -11,6 +11,7 @@ use {
 
 #[cfg(test)]
 use std::path::Path;
+use std::time::Duration;
 
 mod exec;
 mod parse;
@@ -94,7 +95,11 @@ pub fn run<P: Into<PathBuf>>(
             pb.set_draw_target(ProgressDrawTarget::hidden());
         }
 
-        pb.set_style(ProgressStyle::default_spinner().template("{msg}"));
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .template("{msg}")
+                .map_err(|e| format!("{}", e))?,
+        );
         pb.set_message("Determining number of tests ...");
         let num = exec::get_tests(&test_executable, run_disabled_tests)?.len();
         pb.finish_and_clear();
@@ -114,12 +119,13 @@ pub fn run<P: Into<PathBuf>>(
     let progress_global = Arc::new(m.add(ProgressBar::new(num_tests as u64)));
     progress_global.set_style(
         ProgressStyle::default_spinner()
-            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}"),
+            .template("{spinner:.green} {msg} {bar} [{pos}/{len}] {elapsed_precise}")
+            .map_err(|e| format!("{}", e))?,
     );
     progress_global.set_message("Running tests ...");
 
     // Make sure the elapsed time is updated even if no updates arrive from shards.
-    progress_global.enable_steady_tick(100 /*ms*/);
+    progress_global.enable_steady_tick(Duration::from_millis(100));
 
     // Set up a communication channel between the worker processing test
     // output threads and the main thread.
@@ -142,7 +148,11 @@ pub fn run<P: Into<PathBuf>>(
         } else {
             ProgressBar::hidden()
         };
-        progress_shard.set_style(ProgressStyle::default_spinner().template("{spinner} {wide_msg}"));
+        progress_shard.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner} {wide_msg}")
+                .map_err(|e| format!("{}", e))?,
+        );
 
         progress_shards.push(progress_shard);
 
@@ -182,14 +192,14 @@ pub fn run<P: Into<PathBuf>>(
 
             match &result.event {
                 Event::Starting => {
-                    progress_shard.set_message(&result.testcase);
+                    progress_shard.set_message(result.testcase);
                 }
                 Event::Running => {}
                 Event::Terminal { status, .. } => {
                     progress_global.inc(1);
 
                     if status.is_failed() {
-                        progress_shard.set_message(&format!("{}", style(&result.testcase).red()));
+                        progress_shard.set_message(format!("{}", style(&result.testcase).red()));
 
                         stats.failed_tests.push(result.clone());
                     } else {
@@ -212,7 +222,7 @@ pub fn run<P: Into<PathBuf>>(
     });
 
     // This implicitly joins the waiter thread.
-    m.join_and_clear().map_err(|e| e.to_string())?;
+    m.clear().map_err(|e| e.to_string())?;
 
     // If we log only failures wait until all shards have finished processing.
     if verbosity < 3 {
