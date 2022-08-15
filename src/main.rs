@@ -3,18 +3,18 @@
 
 use {
     anyhow::{anyhow, Result},
+    clap::Parser,
     console::style,
     rs_tracing::{
         close_trace_file, close_trace_file_internal, open_trace_file, trace_scoped,
         trace_scoped_internal, trace_to_file_internal,
     },
     std::convert::TryFrom,
-    structopt::StructOpt,
 };
 
 mod gtest;
 
-#[derive(StructOpt, Debug, Default)]
+#[derive(Parser, Debug, Default)]
 pub struct Opt {
     /// Number of parallel jobs
     ///
@@ -26,7 +26,7 @@ pub struct Opt {
     ///
     /// This flag can be controlled with an environment variable and by default is set to the
     /// number of processors available to the runner process.
-    #[structopt(long, short, env = "GTEST_RUNNER_JOBS")]
+    #[clap(long, short, env = "GTEST_RUNNER_JOBS")]
     jobs: Option<usize>,
 
     /// Runner verbosity
@@ -39,7 +39,7 @@ pub struct Opt {
     /// v>2: Pass through and report all test output.
     ///
     /// This flag can be controlled with an environment variable and has a default value
-    #[structopt(long, short, default_value = "2", env = "GTEST_RUNNER_VERBOSITY")]
+    #[clap(long, short, default_value = "2", env = "GTEST_RUNNER_VERBOSITY")]
     verbosity: u64,
 
     /// Dump chrome://tracing trace to current directory
@@ -52,13 +52,13 @@ pub struct Opt {
     // We explicitly do not declare `env` for this flag as clap implicitly sets
     // `Arg::takes_value(true)` which turns this from a flag to an option, see
     // https://github.com/TeXitoi/structopt/issues/176.
-    #[structopt(long, short)]
+    #[clap(long, short)]
     trace: bool,
 
     /// Repeat failed tests
     ///
     /// If this flag is given a non-zero value, failed tests will be repeated up to `repeat` times.
-    #[structopt(long, short, default_value = "0", env = "GTEST_RUNNER_REPEAT")]
+    #[clap(long, short, default_value = "0", env = "GTEST_RUNNER_REPEAT")]
     repeat: u64,
 
     /// GTest executable(s)
@@ -68,7 +68,7 @@ pub struct Opt {
     /// parallel they likely should not depend on system information (e.g., the ability to bind to
     /// fixed ports; the presence or absence of especially test-created files in fixed file system
     /// locations, etc.).
-    #[structopt(required = true)]
+    #[clap(required = true)]
     test_executables: Vec<String>,
 }
 
