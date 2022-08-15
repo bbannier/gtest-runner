@@ -15,7 +15,7 @@ use std::path::Path;
 mod exec;
 mod parse;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Status {
     Ok,
     Failed,
