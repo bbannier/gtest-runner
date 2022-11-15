@@ -14,6 +14,8 @@ use {
 use std::path::Path;
 use std::time::Duration;
 
+use tracing::info_span;
+
 mod exec;
 mod parse;
 
@@ -80,6 +82,8 @@ pub fn run<P: Into<PathBuf>>(
 
     // If we show some sort of progress bar determine the total number of tests before running shards.
     let num_tests = {
+        let span = info_span!("Determine number of tests");
+        let _enter = span.enter();
         trace_scoped!("Determine number of tests");
 
         let run_disabled_tests = match env::var("GTEST_ALSO_RUN_DISABLED_TESTS") {

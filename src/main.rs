@@ -142,7 +142,7 @@ fn test_trace() {
 }
 
 fn main() -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     std::process::exit(exec(&opt)?);
 }
