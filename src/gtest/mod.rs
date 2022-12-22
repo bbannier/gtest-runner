@@ -173,7 +173,7 @@ pub fn run<P: Into<PathBuf>>(
 
         for result in receiver.iter() {
             let shard = result.shard.unwrap();
-            let progress_shard = &progress_shards[shard as usize];
+            let progress_shard = &progress_shards[shard];
 
             progress_shard.inc(1);
 

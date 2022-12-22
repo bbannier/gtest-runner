@@ -21,7 +21,7 @@ pub fn get_tests<P: Into<PathBuf>>(
     include_disabled_tests: bool,
 ) -> Result<HashSet<String>> {
     let result = Command::new(test_executable.into())
-        .args(&["--gtest_list_tests"])
+        .args(["--gtest_list_tests"])
         .output()
         .expect("Failed to execute process");
 
@@ -66,7 +66,7 @@ fn test_get_tests() {
 }
 
 pub fn cmd<P: Into<PathBuf>>(test_executable: P, job_index: usize, jobs: usize) -> Command {
-    let mut child = Command::new(&test_executable.into());
+    let mut child = Command::new(test_executable.into());
 
     child.env("GTEST_SHARD_INDEX", job_index.to_string());
     child.env("GTEST_TOTAL_SHARDS", jobs.to_string());

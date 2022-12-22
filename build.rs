@@ -24,7 +24,7 @@ fn main() -> io::Result<()> {
 
     if let Ok(out_dir) = env::var("OUT_DIR") {
         if let Ok(name) = env::current_exe() {
-            fs::copy(&name, Path::new(&out_dir).join("dummy-gtest-executable")).unwrap();
+            fs::copy(name, Path::new(&out_dir).join("dummy-gtest-executable")).unwrap();
         }
     }
 
