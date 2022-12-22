@@ -16,7 +16,6 @@ path = "src/main.rs"
 [dependencies]
 console = { default-features = false, version = "0.15" }
 indicatif = { default-features = false, version = "0.17" }
-num_cpus = "1.15"
 regex = { features = ["std", "unicode-perl"], default-features = false, version = "1.7" }
 rs_tracing = { version = "1.1.0", default-features = false, features = ["rs_tracing"] }
 crossbeam = "0.8"

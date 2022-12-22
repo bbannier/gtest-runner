@@ -77,6 +77,8 @@ pub fn exec(opt: &Opt) -> Result<i32> {
         open_trace_file!(".").unwrap();
     }
 
+    let available_parallelism = std::thread::available_parallelism()?.into();
+
     let mut ret_vec = Vec::new();
     for exe in &opt.test_executables {
         if opt.test_executables.len() > 1 && opt.verbosity > 0 {
@@ -86,7 +88,7 @@ pub fn exec(opt: &Opt) -> Result<i32> {
         ret_vec.push(gtest::run(
             exe,
             None,
-            opt.jobs.unwrap_or_else(num_cpus::get),
+            opt.jobs.unwrap_or(available_parallelism),
             opt.verbosity,
             opt.repeat,
         )?);
