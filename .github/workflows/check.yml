@@ -1,0 +1,41 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pre-commit-cargo-${{ hashFiles('Cargo.lock') }}
+      - name: Test
+        run: cargo test
+
+  pre-commit:
+    name: Run pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pre-commit-cargo-${{ hashFiles('Cargo.lock') }}
+      - uses: actions/setup-python@v5
+      - uses: pre-commit/action@v3.0.1
