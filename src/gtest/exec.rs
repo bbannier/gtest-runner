@@ -5,7 +5,6 @@ use {
     rs_tracing::{trace_begin, trace_duration_internal, trace_end},
     std::{
         collections::HashSet,
-        convert::Into,
         io::{BufRead, BufReader},
         path::PathBuf,
         process::{Child, Command, Stdio},
