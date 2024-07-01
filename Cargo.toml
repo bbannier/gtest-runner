@@ -20,11 +20,11 @@ regex = { features = ["std", "unicode-perl"], default-features = false, version 
 rs_tracing = { version = "1.1.0", default-features = false, features = ["rs_tracing"] }
 crossbeam = "0.8"
 anyhow = "1.0.86"
-clap = { version = "4.5.4", features = ["std", "derive", "env", "help"], default-features = false }
+clap = { version = "4.5.8", features = ["std", "derive", "env", "help"], default-features = false }
 tracing = { default-features = false, version = "0.1.40" }
 
 [dev-dependencies]
 itertools = "0.13"
 
 [build-dependencies]
-clap = { version = "4.5.4", features = ["std", "derive", "env", "help"], default-features = false }
+clap = { version = "4.5.8", features = ["std", "derive", "env", "help"], default-features = false }
