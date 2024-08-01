@@ -4,38 +4,35 @@ use gtest::{
     exec::exec,
     opt::{Opt, RunMode},
 };
+use rstest::{fixture, rstest};
 
-#[test]
-fn run1() {
+#[fixture]
+fn exe() -> &'static str {
+    // Activate sample data mode for the executable.
     env::set_var("GTEST_RUNNER_SAMPLE_DATA", "true");
-    let exe = env!("CARGO_BIN_EXE_gtest-runner");
 
+    // The test executable is the runner binary.
+    env!("CARGO_BIN_EXE_gtest-runner")
+}
+
+#[rstest]
+fn run1(exe: &str) {
     assert_eq!(0, gtest::run(exe, None, 1, 0, 0).unwrap());
 }
 
-#[test]
-fn run2() {
-    env::set_var("GTEST_RUNNER_SAMPLE_DATA", "true");
-    let exe = env!("CARGO_BIN_EXE_gtest-runner");
-
+#[rstest]
+fn run2(exe: &str) {
     assert_eq!(0, gtest::run(exe, None, 2, 0, 0).unwrap());
 }
 
-#[test]
-fn get_tests() {
-    env::set_var("GTEST_RUNNER_SAMPLE_DATA", "true");
-    let exe = env!("CARGO_BIN_EXE_gtest-runner");
-
+#[rstest]
+fn get_tests(exe: &str) {
     let num_tests = gtest::exec::get_tests(exe, false).map(|xs| xs.len());
-
     assert_eq!(2, num_tests.unwrap());
 }
 
-#[test]
-fn trace() {
-    env::set_var("GTEST_RUNNER_SAMPLE_DATA", "true");
-    let exe = env!("CARGO_BIN_EXE_gtest-runner");
-
+#[rstest]
+fn trace(exe: &str) {
     let opt = Opt {
         trace: true,
         mode: RunMode {
