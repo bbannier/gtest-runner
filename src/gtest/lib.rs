@@ -7,13 +7,12 @@ use {
     std::{cmp::min, env, fs::canonicalize, path::PathBuf, sync::Arc, thread},
 };
 
-#[cfg(test)]
-use std::path::Path;
 use std::time::Duration;
 
 use tracing::info_span;
 
-mod exec;
+pub mod exec;
+pub mod opt;
 mod parse;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -272,17 +271,6 @@ pub fn run<P: Into<PathBuf>>(
     Ok(stats.num_failed())
 }
 
-#[cfg(test)]
 pub fn test_executable() -> PathBuf {
-    Path::new(env!("OUT_DIR")).join("dummy-gtest-executable")
-}
-
-#[test]
-fn test_run1() {
-    assert_eq!(0, run(test_executable(), None, 1, 0, 0).unwrap());
-}
-
-#[test]
-fn test_run2() {
-    assert_eq!(0, run(test_executable(), None, 2, 0, 0).unwrap());
+    std::env::current_exe().expect("could not determine path of current gtest-runner executable")
 }

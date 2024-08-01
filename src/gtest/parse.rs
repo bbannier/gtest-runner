@@ -1,8 +1,5 @@
 use {
-    crate::{
-        gtest,
-        gtest::{Event, Status},
-    },
+    crate::{Event, Status},
     anyhow::{anyhow, Result},
     console::strip_ansi_codes,
 };
@@ -29,7 +26,7 @@ pub struct Parser<T> {
 }
 
 impl<T> Parser<T> {
-    fn parse(&mut self, line: &str) -> Result<Option<gtest::Test>> {
+    fn parse(&mut self, line: &str) -> Result<Option<crate::Test>> {
         let line = strip_ansi_codes(line).to_string();
 
         if let Some(test) = &mut self.test {
@@ -41,7 +38,7 @@ impl<T> Parser<T> {
         if let Some(test) = &self.test {
             let test = test.clone();
             if self.ok.is_match(&line) {
-                result = Some(gtest::Test {
+                result = Some(crate::Test {
                     testcase: test.case,
                     shard: None,
                     event: Event::Terminal {
@@ -52,7 +49,7 @@ impl<T> Parser<T> {
 
                 self.test = None;
             } else if self.failed.is_match(&line) {
-                result = Some(gtest::Test {
+                result = Some(crate::Test {
                     testcase: test.case,
                     shard: None,
                     event: Event::Terminal {
@@ -63,7 +60,7 @@ impl<T> Parser<T> {
 
                 self.test = None;
             } else {
-                result = Some(gtest::Test {
+                result = Some(crate::Test {
                     testcase: test.case,
                     shard: None,
                     event: Event::Running,
@@ -83,7 +80,7 @@ impl<T> Parser<T> {
                 log: vec![line],
             });
 
-            result = Some(gtest::Test {
+            result = Some(crate::Test {
                 testcase: case,
                 shard: None,
                 event: Event::Starting,
@@ -93,10 +90,10 @@ impl<T> Parser<T> {
         Ok(result)
     }
 
-    fn finalize(&mut self) -> Option<gtest::Test> {
+    fn finalize(&mut self) -> Option<crate::Test> {
         // If we still have a non-terminal test case at this point we aborted.
         if let Some(test) = &self.test {
-            let result = gtest::Test {
+            let result = crate::Test {
                 testcase: test.case.clone(),
                 shard: None,
                 event: Event::Terminal {
@@ -134,9 +131,9 @@ impl<T> Iterator for Parser<T>
 where
     T: Iterator<Item = String>,
 {
-    type Item = gtest::Test;
+    type Item = crate::Test;
 
-    fn next(&mut self) -> Option<gtest::Test> {
+    fn next(&mut self) -> Option<crate::Test> {
         match self.reader.next() {
             Some(line) => self.parse(&line).ok()?.or_else(|| self.next()),
             None => self.finalize(),

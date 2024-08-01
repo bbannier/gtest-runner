@@ -13,6 +13,10 @@ edition = "2021"
 name = "gtest-runner"
 path = "src/main.rs"
 
+[lib]
+name = "gtest"
+path = "src/gtest/lib.rs"
+
 [dependencies]
 console = { default-features = false, version = "0.15" }
 indicatif = { default-features = false, version = "0.17" }
