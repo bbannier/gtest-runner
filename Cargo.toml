@@ -28,5 +28,5 @@ clap = { version = "4.5.21", features = ["std", "derive", "env", "help"], defaul
 tracing = { default-features = false, version = "0.1.41" }
 
 [dev-dependencies]
-itertools = "0.13"
+itertools = "0.14"
 rstest = { version = "0.23.0", default-features = false }
