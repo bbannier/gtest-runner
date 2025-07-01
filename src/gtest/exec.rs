@@ -130,7 +130,7 @@ pub fn exec(opt: &Opt) -> Result<i32> {
         let mut ret_vec = Vec::new();
         for exe in test_executables {
             if test_executables.len() > 1 && opt.verbosity > 0 {
-                println!("{}", style(format!("Running {}", exe)).bold());
+                println!("{}", style(format!("Running {exe}")).bold());
             }
             trace_scoped!(exe);
             ret_vec.push(crate::run(
@@ -161,7 +161,7 @@ fn sample_data() {
     fn parse_arg(args: &[String], flag: &str, env: &str) -> Option<String> {
         args.iter()
             .find_map(|a| {
-                if a.starts_with(&format!("--{}", flag)) {
+                if a.starts_with(&format!("--{flag}")) {
                     a.split('=').next().or(Some("")).map(|x| x.to_string())
                 } else {
                     None
@@ -190,9 +190,7 @@ fn sample_data() {
 
     assert!(
         gtest_shard_index < gtest_total_shards,
-        "Shard index ({}) is too large for number of shards ({})",
-        gtest_shard_index,
-        gtest_total_shards
+        "Shard index ({gtest_shard_index}) is too large for number of shards ({gtest_total_shards})"
     );
 
     match gtest_total_shards {
@@ -212,16 +210,12 @@ fn sample_data() {
                 r#"[==========] Running 1 tests from 1 test case.
 [----------] Global test environment set-up.
 [----------] 1 tests from NOPE
-[ RUN      ] NOPE.NOPE{}
-[       OK ] NOPE.NOPE{} (0 ms)"#,
-                gtest_shard_index, gtest_shard_index
+[ RUN      ] NOPE.NOPE{gtest_shard_index}
+[       OK ] NOPE.NOPE{gtest_shard_index} (0 ms)"#
             );
         }
         n => {
-            panic!(
-                "Request {} shards, but only up to 2 shards are supported",
-                n
-            );
+            panic!("Request {n} shards, but only up to 2 shards are supported");
         }
     };
 }

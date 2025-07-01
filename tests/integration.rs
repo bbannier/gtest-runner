@@ -45,7 +45,7 @@ fn trace(exe: &str) {
     let cwd = std::env::current_dir().expect("Could not get current directory");
 
     let get_traces = |dir: &std::path::PathBuf| -> std::collections::HashSet<_> {
-        std::fs::read_dir(&dir)
+        std::fs::read_dir(dir)
             .expect("Could not list directory")
             .map(|entry| entry.expect("Could not get directory entry").path())
             .filter(|path| {

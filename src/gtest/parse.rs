@@ -187,10 +187,7 @@ PC: @     0x7fff617c3e3e __pthread_kill
         vec!["NOPE.NOPE1", "NOPE.NOPE2", "NOPE.NOPE3"],
         Vec::from_iter(
             Parser::new(output.split('\n').map(String::from))
-                .filter(|result| match result.event {
-                    Event::Starting => true,
-                    _ => false,
-                })
+                .filter(|result| matches!(result.event, Event::Starting))
                 .map(|result| result.testcase)
                 .dedup(),
         )

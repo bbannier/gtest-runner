@@ -176,7 +176,7 @@ pub fn run<P: Into<PathBuf>>(
             if let Event::Terminal { log, .. } = &result.event {
                 if verbosity > 2 {
                     for line in log {
-                        println!("{}", line);
+                        println!("{line}");
                     }
                 }
             }
@@ -233,7 +233,7 @@ pub fn run<P: Into<PathBuf>>(
                 if let Event::Terminal { status, log } = &test.event {
                     if status.is_failed() {
                         for line in log {
-                            println!("{}", line);
+                            println!("{line}");
                         }
                     }
                 }
@@ -260,10 +260,7 @@ pub fn run<P: Into<PathBuf>>(
     // This mostly serves to validate that we did not accidentally drop test results.
     let num_tests_reported = stats.num_failed() + stats.num_passed;
     if num_tests != num_tests_reported {
-        eprintln!(
-            "Expected {} tests but only saw results from {}",
-            num_tests, num_tests_reported,
-        );
+        eprintln!("Expected {num_tests} tests but only saw results from {num_tests_reported}",);
 
         return Ok(1);
     }
