@@ -24,7 +24,7 @@ regex = { features = ["std", "unicode-perl"], default-features = false, version 
 rs_tracing = { version = "1.1.0", default-features = false, features = ["rs_tracing"] }
 crossbeam = "0.8"
 anyhow = "1.0.99"
-clap = { version = "4.5.46", features = ["std", "derive", "env", "help"], default-features = false }
+clap = { version = "4.5.48", features = ["std", "derive", "env", "help"], default-features = false }
 tracing = { default-features = false, version = "0.1.41" }
 
 [dev-dependencies]
