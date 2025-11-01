@@ -20,7 +20,7 @@ path = "src/gtest/lib.rs"
 [dependencies]
 console = { default-features = false, version = "0.16" }
 indicatif = { default-features = false, version = "0.18" }
-regex = { features = ["std", "unicode-perl"], default-features = false, version = "1.11" }
+regex = { features = ["std", "unicode-perl"], default-features = false, version = "1.12" }
 rs_tracing = { version = "1.1.0", default-features = false, features = ["rs_tracing"] }
 crossbeam = "0.8"
 anyhow = "1.0.100"
